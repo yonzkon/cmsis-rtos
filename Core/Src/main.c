@@ -1,5 +1,6 @@
 #include "main.h"
-#include <stm32f103xb.h>
+
+UART_HandleTypeDef huart1;
 
 /**
   * @brief System Clock Configuration
@@ -69,7 +70,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-static void MX_GPIO_Config(void)
+static void MX_GPIO_Init(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -93,6 +94,20 @@ static void MX_GPIO_Config(void)
     HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
+static void MX_USART1_UART_Init(void)
+{
+    huart1.Instance = USART1;
+    huart1.Init.BaudRate = 115200;
+    huart1.Init.WordLength = UART_WORDLENGTH_8B;
+    huart1.Init.StopBits = UART_STOPBITS_1;
+    huart1.Init.Parity = UART_PARITY_NONE;
+    huart1.Init.Mode = UART_MODE_TX_RX;
+    huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart1) != HAL_OK)
+        Error_Handler();
+}
+
 static int led_enable = 0;
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -110,7 +125,8 @@ int main(void)
 
     SystemClock_Config();
 
-    MX_GPIO_Config();
+    MX_GPIO_Init();
+    MX_USART1_UART_Init();
 
     while (1) {
         if (led_enable) {
@@ -119,5 +135,10 @@ int main(void)
             HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13, GPIO_PIN_SET);
         }
         HAL_Delay(1000);
+        HAL_UART_Transmit(&huart1, "hello\r\n", 7, 1000);
+        HAL_Delay(1000);
+        char buffer[256] = {0};
+        HAL_UART_Receive(&huart1, buffer, 256, 10000);
+        HAL_UART_Transmit(&huart1, buffer, strlen(buffer), 1000);
     }
 }
