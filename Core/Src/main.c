@@ -72,21 +72,29 @@ static void MX_GPIO_Init(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
+    // PC13
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-
     GPIO_InitStruct.Pin = GPIO_PIN_13;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+    // PA0
     GPIO_InitStruct.Pin = GPIO_PIN_0;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
     HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+    // PA1
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+    GPIO_InitStruct.Pin = GPIO_PIN_1;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
 static void MX_USART1_UART_Init(void)
@@ -105,9 +113,11 @@ static void MX_USART1_UART_Init(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    char buffer[QUEBUF_DEFAULT_SIZE] = {0};
-    quebuf_read(recv_buf, buffer, sizeof(buffer));
-    LOG_INFO(buffer);
+    if (GPIO_Pin == GPIO_PIN_0) {
+        char buffer[QUEBUF_DEFAULT_SIZE] = {0};
+        quebuf_read(recv_buf, buffer, sizeof(buffer));
+        LOG_INFO(buffer);
+    }
 }
 
 int main(void)
@@ -127,9 +137,21 @@ int main(void)
         else
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
+        if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET)
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+        else
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+
         char buffer[1024] = {0};
         HAL_UART_Receive(&huart1, (uint8_t *)buffer, sizeof(buffer), 500);
         quebuf_write(recv_buf, buffer, sizeof(buffer) - huart1.RxXferCount);
+
+        size_t nr = quebuf_peek(recv_buf, buffer, sizeof(buffer));
+        if (buffer[nr-1] == '\n') {
+            quebuf_out_head(recv_buf, nr);
+            buffer[nr-1] = 0;
+            LOG_INFO("echo: %s", buffer);
+        }
     }
 
     LOG_INFO("exit main loop ...");
