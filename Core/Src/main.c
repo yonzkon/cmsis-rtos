@@ -1,11 +1,11 @@
 #include "main.h"
+#include <string.h>
+#include <logx.h>
+#include <quebufx.h>
 
 UART_HandleTypeDef huart1;
+static quebuf_t *recv_buf;
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -38,10 +38,6 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -54,13 +50,6 @@ void Error_Handler(void)
 }
 
 #ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
@@ -69,6 +58,12 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+int _write(int fd, char *buf, int len)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, HAL_MAX_DELAY);
+    return len;
+}
 
 static void MX_GPIO_Init(void)
 {
@@ -108,37 +103,35 @@ static void MX_USART1_UART_Init(void)
         Error_Handler();
 }
 
-static int led_enable = 0;
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if (GPIO_Pin == GPIO_PIN_0) {
-        led_enable = ~led_enable;
-    } else {
-        __NOP();
-    }
+    char buffer[QUEBUF_DEFAULT_SIZE] = {0};
+    quebuf_read(recv_buf, buffer, sizeof(buffer));
+    LOG_INFO(buffer);
 }
 
 int main(void)
 {
     HAL_Init();
-
     SystemClock_Config();
-
     MX_GPIO_Init();
     MX_USART1_UART_Init();
 
+    log_set_level(LOG_LV_DEBUG);
+    recv_buf = quebuf_new(0);
+    LOG_INFO("system initial finished, start main loop ...");
+
     while (1) {
-        if (led_enable) {
-            HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13, GPIO_PIN_RESET);
-            HAL_Delay(1000);
-            HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13, GPIO_PIN_SET);
-        }
-        HAL_Delay(1000);
-        HAL_UART_Transmit(&huart1, "hello\r\n", 7, 1000);
-        HAL_Delay(1000);
-        char buffer[256] = {0};
-        HAL_UART_Receive(&huart1, buffer, 256, 10000);
-        HAL_UART_Transmit(&huart1, buffer, strlen(buffer), 1000);
+        if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_RESET)
+            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+        else
+            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+        char buffer[1024] = {0};
+        HAL_UART_Receive(&huart1, (uint8_t *)buffer, sizeof(buffer), 500);
+        quebuf_write(recv_buf, buffer, sizeof(buffer) - huart1.RxXferCount);
     }
+
+    LOG_INFO("exit main loop ...");
+    quebuf_delete(recv_buf);
 }
