@@ -1,10 +1,16 @@
 #include "main.h"
 #include <string.h>
-#include <logx.h>
-#include <quebufx.h>
+#include <log.h>
+#include <atbuf.h>
+#include <srrp.h>
+#include <crc16.h>
+#include <apix-service.h>
 
 UART_HandleTypeDef huart1;
-static quebuf_t *recv_buf;
+//static atbuf_t *rxbuf;
+//static atbuf_t *txbuf;
+static char rxbuf[256];
+static char txbuf[256];
 
 void SystemClock_Config(void)
 {
@@ -124,6 +130,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
+static void apinode_init()
+{
+    int nr = srrp_write_request(
+        txbuf, sizeof(txbuf),
+        APICORE_SERVICE_ADD,
+        "{header:'/0012/echo'}");
+    HAL_UART_Transmit(&huart1, (uint8_t *)txbuf, nr, HAL_MAX_DELAY);
+}
+
 int main(void)
 {
     HAL_Init();
@@ -132,22 +147,43 @@ int main(void)
     MX_USART1_UART_Init();
 
     log_set_level(LOG_LV_DEBUG);
-    recv_buf = quebuf_new(0);
+    //rxbuf = atbuf_new(0);
+    //txbuf = atbuf_new(0);
+
+    apinode_init();
     LOG_INFO("system initial finished, start main loop ...");
 
     while (1) {
-        char buffer[1024] = {0};
-        HAL_UART_Receive(&huart1, (uint8_t *)buffer, sizeof(buffer), 500);
-        quebuf_write(recv_buf, buffer, sizeof(buffer) - huart1.RxXferCount);
+        struct srrp_packet pac = {0};
+        int nread = 0;
+        int nparse = 0;
 
-        size_t nr = quebuf_peek(recv_buf, buffer, sizeof(buffer));
-        if (buffer[nr-1] == '\n') {
-            quebuf_out_head(recv_buf, nr);
-            buffer[nr-1] = 0;
-            LOG_INFO("echo: %s", buffer);
+        HAL_UART_Receive(&huart1, (uint8_t *)rxbuf, sizeof(rxbuf), 500);
+        nread = sizeof(rxbuf) - huart1.RxXferCount;
+        if (nread) {
+            nparse = srrp_read_one_packet(rxbuf, nread, &pac);
+            if (nparse != -1) {
+                if (strcmp(pac.header, "/0012/echo") == 0) {
+                    char req[256];
+                    int nreq = 0;
+                    uint16_t crc = crc16(pac.header, strlen(pac.header));
+                    crc = crc16_crc(crc, pac.data, strlen(pac.data));
+                    nreq = srrp_write_response(req, sizeof(req), crc,
+                                               "/0012/echo", "{msg:'world'}");
+                    HAL_UART_Transmit(&huart1, (uint8_t *)req, nreq, HAL_MAX_DELAY);
+                    if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
+                        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+                    } else {
+                        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+                    }
+                }
+            } else {
+                HAL_UART_Transmit(&huart1, (uint8_t *)rxbuf, nread, HAL_MAX_DELAY);
+            }
         }
     }
 
     LOG_INFO("exit main loop ...");
-    quebuf_delete(recv_buf);
+    //atbuf_delete(rxbuf);
+    //atbuf_delete(txbuf);
 }
