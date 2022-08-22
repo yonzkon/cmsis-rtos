@@ -133,7 +133,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 static void apinode_init()
 {
     int nr = srrp_write_request(
-        txbuf, sizeof(txbuf),
+        txbuf, sizeof(txbuf), 0x3333,
         APICORE_SERVICE_ADD,
         "{header:'/0012/echo'}");
     HAL_UART_Transmit(&huart1, (uint8_t *)txbuf, nr, HAL_MAX_DELAY);
@@ -166,9 +166,9 @@ int main(void)
                 if (strcmp(pac.header, "/0012/echo") == 0) {
                     char req[256];
                     int nreq = 0;
-                    uint16_t crc = crc16(pac.header, strlen(pac.header));
-                    crc = crc16_crc(crc, pac.data, strlen(pac.data));
-                    nreq = srrp_write_response(req, sizeof(req), crc,
+                    uint16_t crc = crc16(pac.header, pac.header_len);
+                    crc = crc16_crc(crc, pac.data, pac.data_len);
+                    nreq = srrp_write_response(req, sizeof(req), pac.reqid, crc,
                                                "/0012/echo", "{msg:'world'}");
                     HAL_UART_Transmit(&huart1, (uint8_t *)req, nreq, HAL_MAX_DELAY);
                     if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
