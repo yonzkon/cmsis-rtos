@@ -9,6 +9,7 @@
 #include <apix-service.h>
 
 UART_HandleTypeDef huart1;
+atbuf_t *rxbuf;
 
 void SystemClock_Config(void)
 {
@@ -153,6 +154,7 @@ int main(void)
 
     log_set_level(LOG_LV_DEBUG);
 
+    rxbuf = atbuf_new(0);
     struct svchub *hub = svchub_new();
     svchub_add_service(hub, "/0012/echo", on_echo);
     apinode_init();
@@ -160,18 +162,19 @@ int main(void)
 
     while (1) {
         int nread = 0;
-        char buffer[256];
-
-        HAL_UART_Receive(&huart1, (uint8_t *)buffer, sizeof(buffer), 500);
-        nread = sizeof(buffer) - huart1.RxXferCount;
+        int spare = atbuf_spare(rxbuf);
+        HAL_UART_Receive(&huart1, (uint8_t *)atbuf_write_pos(rxbuf), spare, 500);
+        nread = spare - huart1.RxXferCount;
         if (nread == 0) continue;
-        buffer[nread] = 0;
+        atbuf_write_advance(rxbuf, nread);
 
-        struct srrp_packet *req = srrp_read_one_packet(buffer);
-        if (!req) {
-            HAL_UART_Transmit(&huart1, (uint8_t *)buffer, nread, HAL_MAX_DELAY);
+        struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
+        if (req == NULL) {
+            HAL_UART_Transmit(&huart1, (uint8_t *)atbuf_read_pos(rxbuf), nread, HAL_MAX_DELAY);
+            atbuf_read_advance(rxbuf, nread);
             continue;
         }
+        atbuf_read_advance(rxbuf, req->len);
 
         struct srrp_packet *resp = NULL;
         if (svchub_deal(hub, req, &resp) == 0) {
@@ -189,5 +192,6 @@ int main(void)
 
     svchub_del_service(hub, "/0012/echo");
     svchub_destroy(hub);
+    atbuf_delete(rxbuf);
     LOG_INFO("exit main loop ...");
 }
