@@ -8,7 +8,6 @@
 #include <srrp.h>
 #include <crc16.h>
 #include <svcx.h>
-#include <apix-station.h>
 
 static atbuf_t *rxbuf;
 static struct svchub *hub;
@@ -32,7 +31,7 @@ int apistt_init()
     svchub_add_service(hub, "/8888/echo", on_echo);
 
     struct srrp_packet *pac = srrp_write_request(
-        8888, APIBUS_STATION_ADD, "{sttid:8888}");
+        8888, "/8888/online", "{}");
     write(fd_uart2, pac->raw, pac->len);
     srrp_free(pac);
 
@@ -41,10 +40,6 @@ int apistt_init()
 
 int apistt_fini()
 {
-    struct srrp_packet *pac = srrp_write_request(
-        8888, APIBUS_STATION_DEL, "{sttid:8888}");
-    write(fd_uart2, pac->raw, pac->len);
-    srrp_free(pac);
     close(fd_uart2);
 
     svchub_del_service(hub, "/8888/echo");
@@ -82,7 +77,7 @@ void apistt_loop()
 
     if ((HAL_GetTick() / 1000) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
-            8888, APIBUS_STATION_ALIVE, "{sttid:8888}");
+            8888, "/8888/alive", "{}");
         write(fd_uart2, pac->raw, pac->len);
     }
 }
