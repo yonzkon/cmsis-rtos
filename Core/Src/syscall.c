@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 
 static int fd_state[4];
 
@@ -14,6 +15,12 @@ int _write(int fd, char *buf, int len)
         HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, HAL_MAX_DELAY);
         return len - huart1.TxXferCount;
     }
+
+    if (fd == 2) {
+        HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, HAL_MAX_DELAY);
+        return len - huart2.TxXferCount;
+    }
+
     errno = EBADF;
     return -1;
 }
@@ -24,6 +31,12 @@ int _read(int fd, char *buf, int len)
         HAL_UART_Receive(&huart1, (uint8_t *)buf, len, 500);
         return len - huart1.RxXferCount;
     }
+
+    if (fd == 2) {
+        HAL_UART_Receive(&huart2, (uint8_t *)buf, len, 500);
+        return len - huart2.RxXferCount;
+    }
+
     errno = EBADF;
     return -1;
 }
