@@ -38,7 +38,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 $(wildcard extlib/src/*.c) \
 Core/Src/syscall.c \
-Core/Src/apinode.c \
+Core/Src/apistt.c \
 Core/Src/main.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \

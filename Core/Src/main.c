@@ -130,9 +130,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
-extern int apinode_init();
-extern int apinode_fini();
-extern int apinode_loop();
+extern int apistt_init();
+extern int apistt_fini();
+extern int apistt_loop();
 
 int main(void)
 {
@@ -143,13 +143,13 @@ int main(void)
     MX_USART2_UART_Init();
 
     log_set_level(LOG_LV_DEBUG);
-    apinode_init();
+    apistt_init();
     LOG_INFO("system initial finished, start main loop ...");
 
     while (1) {
-        apinode_loop();
+        apistt_loop();
     }
 
     LOG_INFO("exit main loop ...");
-    apinode_fini();
+    apistt_fini();
 }
