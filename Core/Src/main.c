@@ -1,15 +1,7 @@
 #include "main.h"
-#include <assert.h>
-#include <string.h>
 #include <log.h>
-#include <atbuf.h>
-#include <srrp.h>
-#include <crc16.h>
-#include <svcx.h>
-#include <apix-service.h>
 
 UART_HandleTypeDef huart1;
-atbuf_t *rxbuf;
 
 void SystemClock_Config(void)
 {
@@ -63,12 +55,6 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-int _write(int fd, char *buf, int len)
-{
-    HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, HAL_MAX_DELAY);
-    return len;
-}
 
 static void MX_GPIO_Init(void)
 {
@@ -129,21 +115,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
-static void apinode_init()
-{
-    struct srrp_packet *pac = srrp_write_request(
-        0x3333, APICORE_SERVICE_ADD, "{header:'/0012/echo'}");
-    HAL_UART_Transmit(&huart1, (uint8_t *)pac->raw, pac->len, HAL_MAX_DELAY);
-    srrp_free(pac);
-}
-
-static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
-{
-    uint16_t crc = crc16(req->header, req->header_len);
-    crc = crc16_crc(crc, req->data, req->data_len);
-    *resp = srrp_write_response(req->reqid, crc, req->header, "{msg:'world'}");
-    return 0;
-}
+extern int apinode_init();
+extern int apinode_fini();
+extern int apinode_loop();
 
 int main(void)
 {
@@ -153,45 +127,13 @@ int main(void)
     MX_USART1_UART_Init();
 
     log_set_level(LOG_LV_DEBUG);
-
-    rxbuf = atbuf_new(0);
-    struct svchub *hub = svchub_new();
-    svchub_add_service(hub, "/0012/echo", on_echo);
     apinode_init();
     LOG_INFO("system initial finished, start main loop ...");
 
     while (1) {
-        int nread = 0;
-        int spare = atbuf_spare(rxbuf);
-        HAL_UART_Receive(&huart1, (uint8_t *)atbuf_write_pos(rxbuf), spare, 500);
-        nread = spare - huart1.RxXferCount;
-        if (nread == 0) continue;
-        atbuf_write_advance(rxbuf, nread);
-
-        struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
-        if (req == NULL) {
-            HAL_UART_Transmit(&huart1, (uint8_t *)atbuf_read_pos(rxbuf), nread, HAL_MAX_DELAY);
-            atbuf_read_advance(rxbuf, nread);
-            continue;
-        }
-        atbuf_read_advance(rxbuf, req->len);
-
-        struct srrp_packet *resp = NULL;
-        if (svchub_deal(hub, req, &resp) == 0) {
-            assert(resp);
-            HAL_UART_Transmit(&huart1, (uint8_t *)resp->raw, resp->len, HAL_MAX_DELAY);
-            if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
-                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-            } else {
-                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-            }
-            srrp_free(resp);
-        }
-        srrp_free(req);
+        apinode_loop();
     }
 
-    svchub_del_service(hub, "/0012/echo");
-    svchub_destroy(hub);
-    atbuf_delete(rxbuf);
     LOG_INFO("exit main loop ...");
+    apinode_fini();
 }
