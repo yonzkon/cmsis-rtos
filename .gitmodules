@@ -1,3 +1,6 @@
-[submodule "extlib"]
-	path = extlib
-	url = https://github.com/deerlets/extlib.git
+[submodule "apix"]
+	path = apix
+	url = https://github.com/yonzkon/apix
+[submodule "libmodbus"]
+	path = libmodbus
+	url = https://github.com/yonzkon/libmodbus

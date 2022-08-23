@@ -36,7 +36,10 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-$(wildcard extlib/src/*.c) \
+libmodbus/src/modbus.c \
+libmodbus/src/modbus-data.c \
+libmodbus/src/modbus-stm32-rtu.c \
+$(wildcard apix/src/*.c) \
 Core/Src/syscall.c \
 Core/Src/apistt.c \
 Core/Src/main.c \
@@ -113,7 +116,8 @@ AS_INCLUDES =
 
 # C includes
 C_INCLUDES =  \
--Iextlib/src \
+-Ilibmodbus/src \
+-Iapix/src \
 -ICore/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
