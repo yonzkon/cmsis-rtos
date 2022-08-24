@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/select.h>
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
@@ -82,4 +84,17 @@ int usleep(useconds_t usec)
 {
     HAL_Delay(usec / 1000);
     return 0;
+}
+
+int nanosleep(const struct timespec *rqtp, struct timespec *rmtp)
+{
+    HAL_Delay(rqtp->tv_sec * 1000 + rqtp->tv_nsec / 1000 / 1000);
+    return 0;
+}
+
+int select(int nfds, fd_set *restrict readfds,
+           fd_set *restrict writefds, fd_set *restrict exceptfds,
+           struct timeval *restrict timeout)
+{
+    return 1;
 }

@@ -11,7 +11,7 @@
 
 static atbuf_t *rxbuf;
 static struct svchub *hub;
-static int fd_uart2;
+static int fd_stt;
 
 static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
 {
@@ -25,14 +25,14 @@ int apistt_init()
 {
     rxbuf = atbuf_new(0);
     hub = svchub_new();
-    fd_uart2 = open("uart2", 0);
-    assert(fd_uart2);
+    fd_stt = open("uart1", 0);
+    assert(fd_stt);
 
     svchub_add_service(hub, "/8888/echo", on_echo);
 
     struct srrp_packet *pac = srrp_write_request(
         8888, "/8888/online", "{}");
-    write(fd_uart2, pac->raw, pac->len);
+    write(fd_stt, pac->raw, pac->len);
     srrp_free(pac);
 
     return 0;
@@ -40,7 +40,7 @@ int apistt_init()
 
 int apistt_fini()
 {
-    close(fd_uart2);
+    close(fd_stt);
 
     svchub_del_service(hub, "/8888/echo");
     svchub_destroy(hub);
@@ -50,13 +50,13 @@ int apistt_fini()
 
 void apistt_loop()
 {
-    int nread = read(fd_uart2, atbuf_write_pos(rxbuf), atbuf_spare(rxbuf));
+    int nread = read(fd_stt, atbuf_write_pos(rxbuf), atbuf_spare(rxbuf));
     if (nread == 0) return;
     atbuf_write_advance(rxbuf, nread);
 
     struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
     if (req == NULL) {
-        write(fd_uart2, atbuf_read_pos(rxbuf), nread);
+        write(fd_stt, atbuf_read_pos(rxbuf), nread);
         atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
         return;
     }
@@ -65,7 +65,7 @@ void apistt_loop()
     struct srrp_packet *resp = NULL;
     if (svchub_deal(hub, req, &resp) == 0) {
         assert(resp);
-        write(fd_uart2, resp->raw, resp->len);
+        write(fd_stt, resp->raw, resp->len);
         if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
         } else {
@@ -78,6 +78,6 @@ void apistt_loop()
     if ((HAL_GetTick() / 1000) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
             8888, "/8888/alive", "{}");
-        write(fd_uart2, pac->raw, pac->len);
+        write(fd_stt, pac->raw, pac->len);
     }
 }
