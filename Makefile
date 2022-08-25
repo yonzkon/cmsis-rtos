@@ -40,6 +40,7 @@ libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
 $(wildcard apix/src/*.c) \
+Core/Src/init.c \
 Core/Src/syscall.c \
 Core/Src/apistt.c \
 Core/Src/main.c \

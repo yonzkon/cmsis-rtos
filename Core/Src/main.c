@@ -1,10 +1,13 @@
 #include "main.h"
 #include <string.h>
+#include <unistd.h>
+#include <ringbuf.h>
 #include <log.h>
 #include <modbus.h>
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+struct ringbuf *huart2_rxbuf;
 
 void SystemClock_Config(void)
 {
@@ -117,6 +120,52 @@ static void MX_USART2_UART_Init(void)
     huart2.Init.OverSampling = UART_OVERSAMPLING_16;
     if (HAL_UART_Init(&huart2) != HAL_OK)
         Error_Handler();
+    huart2_rxbuf = ringbuf_new(0);
+    HAL_UARTEx_ReceiveToIdle_IT(
+        &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+        ringbuf_spare(huart2_rxbuf));
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    LOG_INFO("cplt");
+}
+
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+    LOG_INFO("halfcplt");
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &huart1)
+        LOG_ERROR("huart1");
+    else if (huart == &huart2)
+        LOG_ERROR("huart2");
+
+    if (ringbuf_spare_right(huart2_rxbuf) > 0) {
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+            ringbuf_spare_right(huart2_rxbuf));
+    } else {
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+            ringbuf_spare_left(huart2_rxbuf));
+    }
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    ringbuf_write_advance(huart2_rxbuf, Size);
+    if (ringbuf_spare_right(huart2_rxbuf) > 0) {
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+            ringbuf_spare_right(huart2_rxbuf));
+    } else {
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+            ringbuf_spare_left(huart2_rxbuf));
+    }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -136,14 +185,8 @@ extern int apistt_init();
 extern int apistt_fini();
 extern int apistt_loop();
 
-int main(void)
+void init(void)
 {
-    HAL_Init();
-    SystemClock_Config();
-    MX_GPIO_Init();
-    MX_USART1_UART_Init();
-    MX_USART2_UART_Init();
-
     log_set_level(LOG_LV_DEBUG);
     apistt_init();
     LOG_INFO("system initial finished, start main loop ...");
@@ -165,8 +208,23 @@ int main(void)
         }
 
         //apistt_loop();
+
+        usleep(100 * 1000 * 1);
     }
 
     LOG_INFO("exit main loop ...");
     apistt_fini();
+}
+
+extern void fenix_main();
+
+int main(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_USART1_UART_Init();
+    MX_USART2_UART_Init();
+
+    fenix_main(init);
 }

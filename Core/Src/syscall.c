@@ -5,9 +5,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/select.h>
+#include <ringbuf.h>
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern struct ringbuf *huart2_rxbuf;
 
 static int fd_state[4];
 
@@ -29,14 +31,30 @@ int _write(int fd, char *buf, int len)
 
 int _read(int fd, char *buf, int len)
 {
+    asm(
+        "STMFD R13!, {R14};"
+        //"push {lr};"
+        "mov r7, #3;"
+        "swi 0;"
+        "LDMFD R13!, {R14};"
+        //"pop {lr};"
+        ::);
+}
+
+int sys_read(int fd, char *buf, int len)
+{
     if (fd == 1) {
         HAL_UART_Receive(&huart1, (uint8_t *)buf, len, 500);
         return len - huart1.RxXferCount;
     }
 
     if (fd == 2) {
-        HAL_UART_Receive(&huart2, (uint8_t *)buf, len, 500);
-        return len - huart2.RxXferCount;
+        HAL_NVIC_DisableIRQ(USART2_IRQn);
+        int n = ringbuf_used(huart2_rxbuf);
+        if (n > len) n = len;
+        ringbuf_read(huart2_rxbuf, buf, len);
+        HAL_NVIC_EnableIRQ(USART2_IRQn);
+        return n;
     }
 
     errno = EBADF;

@@ -51,29 +51,37 @@ int apistt_fini()
 void apistt_loop()
 {
     int nread = read(fd_stt, atbuf_write_pos(rxbuf), atbuf_spare(rxbuf));
+    assert(nread >= 0);
     if (nread == 0) return;
     atbuf_write_advance(rxbuf, nread);
 
-    struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
-    if (req == NULL) {
-        write(fd_stt, atbuf_read_pos(rxbuf), nread);
-        atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
-        return;
-    }
-    atbuf_read_advance(rxbuf, req->len);
-
-    struct srrp_packet *resp = NULL;
-    if (svchub_deal(hub, req, &resp) == 0) {
-        assert(resp);
-        write(fd_stt, resp->raw, resp->len);
-        if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-        } else {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    while (atbuf_used(rxbuf)) {
+        uint32_t offset = srrp_next_packet_offset(
+            atbuf_read_pos(rxbuf), atbuf_used(rxbuf));
+        atbuf_read_advance(rxbuf, offset);
+        struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
+        if (req == NULL) {
+            write(fd_stt, atbuf_read_pos(rxbuf), nread);
+            atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
+            return;
         }
-        srrp_free(resp);
+        atbuf_read_advance(rxbuf, req->len);
+
+        struct srrp_packet *resp = NULL;
+        if (svchub_deal(hub, req, &resp) == 0) {
+            assert(resp);
+            int nr = write(fd_stt, resp->raw, resp->len);
+            assert(nr != -1);
+            assert(nr != 0);
+            if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
+                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+            } else {
+                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+            }
+            srrp_free(resp);
+        }
+        srrp_free(req);
     }
-    srrp_free(req);
 
     if ((HAL_GetTick() / 1000) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
