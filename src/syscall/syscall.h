@@ -1,5 +1,5 @@
-#ifndef __SYS_CALL_H__
-#define __SYS_CALL_H__
+#ifndef __SYSCALL_H
+#define __SYSCALL_H
 
 #define SYS_EXIT 1
 #define SYS_FORK 2
@@ -26,5 +26,9 @@
 
 int __syscall(int no, void *arg1, void *arg2, void *arg3,
               void *arg4, void *arg5, void *arg6);
+
+extern void *syscall_table[512];
+
+void sys_init(void);
 
 #endif

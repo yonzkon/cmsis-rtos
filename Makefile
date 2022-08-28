@@ -39,12 +39,10 @@ C_SOURCES =  \
 libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
-$(wildcard Core/Src/init/*.c) \
-$(wildcard Core/Src/fenix/*.c) \
 $(wildcard apix/src/*.c) \
-Core/Src/main.c \
-Core/Src/stm32f1xx_it.c \
-Core/Src/stm32f1xx_hal_msp.c \
+$(wildcard src/init/*.c) \
+$(wildcard src/syscall/*.c) \
+$(wildcard src/drivers/*.c) \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
@@ -58,12 +56,11 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c \
-Core/Src/system_stm32f1xx.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c
 
 # ASM sources
 ASM_SOURCES =  \
-$(wildcard Core/Src/fenix/*.s) \
+$(wildcard src/syscall/*.s) \
 startup_stm32f103xb.s
 
 
@@ -119,7 +116,9 @@ AS_INCLUDES =
 C_INCLUDES =  \
 -Ilibmodbus/src \
 -Iapix/src \
--ICore/Inc \
+-Isrc/include \
+-Isrc/syscall \
+-Isrc/drivers \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F1xx/Include \
