@@ -1,9 +1,6 @@
 #include "main.h"
 #include <string.h>
-#include <unistd.h>
 #include <ringbuf.h>
-#include <log.h>
-#include <modbus.h>
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -128,20 +125,20 @@ static void MX_USART2_UART_Init(void)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    LOG_INFO("cplt");
+    //LOG_INFO("cplt");
 }
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-    LOG_INFO("halfcplt");
+    //LOG_INFO("halfcplt");
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
-    if (huart == &huart1)
-        LOG_ERROR("huart1");
-    else if (huart == &huart2)
-        LOG_ERROR("huart2");
+    //if (huart == &huart1)
+    //    LOG_ERROR("huart1");
+    //else if (huart == &huart2)
+    //    LOG_ERROR("huart2");
 
     if (ringbuf_spare_right(huart2_rxbuf) > 0) {
         HAL_UARTEx_ReceiveToIdle_IT(
@@ -181,42 +178,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
-extern int apistt_init();
-extern int apistt_fini();
-extern int apistt_loop();
-
-void init(void)
-{
-    log_set_level(LOG_LV_DEBUG);
-    apistt_init();
-    LOG_INFO("system initial finished, start main loop ...");
-
-    modbus_t *ctx = modbus_new_rtu("uart2", 115200, 'N', 8, 0);
-    modbus_set_slave(ctx, 12);
-    modbus_mapping_t *map = modbus_mapping_new(500, 500, 500, 500);
-    modbus_connect(ctx);
-
-    while (1) {
-        uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
-        memset(query, 0, sizeof(query));
-        int rc = modbus_receive(ctx, query);
-        if (rc >= 0) {
-            modbus_reply(ctx, query, rc, map);
-            LOG_INFO("modbus reply");
-        } else {
-            LOG_INFO("modbus receive failed");
-        }
-
-        //apistt_loop();
-
-        usleep(100 * 1000 * 1);
-    }
-
-    LOG_INFO("exit main loop ...");
-    apistt_fini();
-}
-
-extern void fenix_main();
+extern void fenix_main(void);
 
 int main(void)
 {
@@ -226,5 +188,9 @@ int main(void)
     MX_USART1_UART_Init();
     MX_USART2_UART_Init();
 
-    fenix_main(init);
+    __asm__("MRS r0, CONTROL;");
+    __asm__("ORR r0, #1;");
+    __asm__("MSR CONTROL, r0;");
+
+    fenix_main();
 }

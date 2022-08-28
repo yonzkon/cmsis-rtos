@@ -39,10 +39,9 @@ C_SOURCES =  \
 libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
+$(wildcard Core/Src/init/*.c) \
+$(wildcard Core/Src/fenix/*.c) \
 $(wildcard apix/src/*.c) \
-Core/Src/init.c \
-Core/Src/syscall.c \
-Core/Src/apistt.c \
 Core/Src/main.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \
@@ -64,6 +63,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c
 
 # ASM sources
 ASM_SOURCES =  \
+$(wildcard Core/Src/fenix/*.s) \
 startup_stm32f103xb.s
 
 

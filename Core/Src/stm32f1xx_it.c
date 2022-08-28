@@ -144,13 +144,7 @@ void UsageFault_Handler(void)
   */
 void SVC_Handler(void)
 {
-    asm(
-        "push {lr};"
-        "cmp r7, #3;"
-        "bl sys_read;"
-        "str r0, [sp, #4];"
-        "pop {lr};"
-    );
+    __asm__("b at_syscall;");
 }
 
 /**
