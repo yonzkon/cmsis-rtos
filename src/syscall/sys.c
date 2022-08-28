@@ -8,6 +8,7 @@
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern struct ringbuf *huart1_rxbuf;
 extern struct ringbuf *huart2_rxbuf;
 
 static int fd_state[4];
@@ -15,8 +16,12 @@ static int fd_state[4];
 int sys_read(int fd, char *buf, int len)
 {
     if (fd == 1) {
-        HAL_UART_Receive(&huart1, (uint8_t *)buf, len, 500);
-        return len - huart1.RxXferCount;
+        HAL_NVIC_DisableIRQ(USART1_IRQn);
+        int n = ringbuf_used(huart1_rxbuf);
+        if (n > len) n = len;
+        ringbuf_read(huart1_rxbuf, buf, len);
+        HAL_NVIC_EnableIRQ(USART1_IRQn);
+        return n;
     }
 
     if (fd == 2) {

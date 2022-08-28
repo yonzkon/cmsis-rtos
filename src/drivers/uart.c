@@ -5,6 +5,7 @@
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+struct ringbuf *huart1_rxbuf;
 struct ringbuf *huart2_rxbuf;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -24,6 +25,18 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     else if (huart == &huart2)
         printk("huart2\n");
 
+    if (huart == &huart1) {
+        if (ringbuf_spare_right(huart1_rxbuf) > 0) {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
+                ringbuf_spare_right(huart1_rxbuf));
+        } else {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
+                ringbuf_spare_left(huart1_rxbuf));
+        }
+    }
+
     if (huart == &huart2) {
         if (ringbuf_spare_right(huart2_rxbuf) > 0) {
             HAL_UARTEx_ReceiveToIdle_IT(
@@ -39,15 +52,30 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-    ringbuf_write_advance(huart2_rxbuf, Size);
-    if (ringbuf_spare_right(huart2_rxbuf) > 0) {
-        HAL_UARTEx_ReceiveToIdle_IT(
-            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
-            ringbuf_spare_right(huart2_rxbuf));
-    } else {
-        HAL_UARTEx_ReceiveToIdle_IT(
-            &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
-            ringbuf_spare_left(huart2_rxbuf));
+    if (huart == &huart1) {
+        ringbuf_write_advance(huart1_rxbuf, Size);
+        if (ringbuf_spare_right(huart1_rxbuf) > 0) {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
+                ringbuf_spare_right(huart1_rxbuf));
+        } else {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
+                ringbuf_spare_left(huart1_rxbuf));
+        }
+    }
+
+    if (huart == &huart2) {
+        ringbuf_write_advance(huart2_rxbuf, Size);
+        if (ringbuf_spare_right(huart2_rxbuf) > 0) {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+                ringbuf_spare_right(huart2_rxbuf));
+        } else {
+            HAL_UARTEx_ReceiveToIdle_IT(
+                &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+                ringbuf_spare_left(huart2_rxbuf));
+        }
     }
 }
 
@@ -134,6 +162,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
          *  PA3     ------> USART2_RX
          */
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
+        HAL_NVIC_DisableIRQ(USART2_IRQn);
     }
 }
 
@@ -150,6 +179,10 @@ void uart_init(void)
     huart1.Init.OverSampling = UART_OVERSAMPLING_16;
     if (HAL_UART_Init(&huart1) != HAL_OK)
         panic("init huart1 failed");
+    huart1_rxbuf = ringbuf_new(0);
+    HAL_UARTEx_ReceiveToIdle_IT(
+        &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
+        ringbuf_spare(huart1_rxbuf));
 
     // huart2 init
     huart2.Instance = USART2;
