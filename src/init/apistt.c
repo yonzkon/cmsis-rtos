@@ -87,5 +87,6 @@ void apistt_loop()
         struct srrp_packet *pac = srrp_write_request(
             8888, "/8888/alive", "{}");
         write(fd_stt, pac->raw, pac->len);
+        srrp_free(pac);
     }
 }

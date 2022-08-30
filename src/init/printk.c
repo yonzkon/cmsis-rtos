@@ -23,6 +23,8 @@ static int vprintk(const char *format, va_list ap)
 
 void printk(const char *format, ...)
 {
+    assert(format && *format != '\0');
+
     va_list ap;
     va_start(ap, format);
     vprintk(format, ap);
@@ -31,6 +33,8 @@ void printk(const char *format, ...)
 
 void panic(const char *format, ...)
 {
+    assert(format && *format != '\0');
+
     va_list ap;
     va_start(ap, format);
     vprintk(format, ap);
