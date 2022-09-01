@@ -43,6 +43,7 @@ $(wildcard apix/src/*.c) \
 $(wildcard src/init/*.c) \
 $(wildcard src/syscall/*.c) \
 $(wildcard src/drivers/*.c) \
+$(wildcard src/fs/*.c) \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
@@ -119,6 +120,7 @@ C_INCLUDES =  \
 -Isrc/include \
 -Isrc/syscall \
 -Isrc/drivers \
+-Isrc/fs \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F1xx/Include \

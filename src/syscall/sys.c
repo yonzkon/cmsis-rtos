@@ -1,17 +1,22 @@
 #include "stm32f1xx_hal.h"
 #include "syscall.h"
 #include <errno.h>
+#include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/select.h>
 #include <ringbuf.h>
+#include <fs.h>
+#include <list.h>
 
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern struct ringbuf *huart1_rxbuf;
 extern struct ringbuf *huart2_rxbuf;
 
-static int fd_state[4];
+static LIST_HEAD(files);
+static char fd_state[64];
 
 int sys_read(int fd, char *buf, int len)
 {
@@ -33,6 +38,14 @@ int sys_read(int fd, char *buf, int len)
         return n;
     }
 
+    struct file *pos;
+    list_for_each_entry(pos, &files, node) {
+        if (pos->fd == fd) {
+            assert(pos->inode->ops.read);
+            return pos->inode->ops.read(pos->inode, buf, len);
+        }
+    }
+
     errno = EBADF;
     return -1;
 }
@@ -47,6 +60,14 @@ int sys_write(int fd, char *buf, int len)
     if (fd == 2) {
         HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, HAL_MAX_DELAY);
         return len - huart2.TxXferCount;
+    }
+
+    struct file *pos;
+    list_for_each_entry(pos, &files, node) {
+        if (pos->fd == fd) {
+            assert(pos->inode->ops.write);
+            return pos->inode->ops.write(pos->inode, buf, len);
+        }
     }
 
     errno = EBADF;
@@ -75,19 +96,54 @@ int sys_open(const char *pathname, int flags)
         }
     }
 
+    struct dentry *den = dentry_walk(pathname);
+    if (den) {
+        struct file *pos;
+        list_for_each_entry(pos, &files, node) {
+            if (pos->dentry == den) {
+                errno = EBUSY;
+                return -1;
+            }
+        }
+        for (int i = 0; i < 64; i++) {
+            if (fd_state[i] == 0) {
+                pos = calloc(1, sizeof(*pos));
+                fd_state[i] = 1;
+                pos->fd = i;
+                pos->dentry = den;
+                pos->inode = den->inode;
+                if (den->inode->ops.open)
+                    den->inode->ops.open(den->inode);
+                list_add(&pos->node, &files);
+                return i;
+            }
+        }
+    }
+
     errno = ENOENT;
     return -1;
 }
 
 int sys_close(int fd)
 {
-    if (fd > 2) {
-        errno = EBADF;
-        return -1;
+    if (fd == 1 || fd == 2) {
+        fd_state[fd] = 0;
+        return 0;
     }
 
-    fd_state[fd] = 0;
-    return 0;
+    struct file *pos;
+    list_for_each_entry(pos, &files, node) {
+        if (pos->fd == fd) {
+            list_del(&pos->node);
+            free(pos);
+            assert(fd_state[fd] == 1);
+            fd_state[fd] = 0;
+            return 0;
+        }
+    }
+
+    errno = EBADF;
+    return -1;
 }
 
 int sys_nanosleep(const struct timespec *rqtp, struct timespec *rmtp)

@@ -1,5 +1,7 @@
 #include "stm32f1xx_hal.h"
 #include <printk.h>
+#include <fs.h>
+#include <gpio.h>
 #include <led.h>
 #include <uart.h>
 #include <syscall.h>
@@ -16,6 +18,10 @@ int main(void)
 {
     HAL_Init();
     SystemClock_Config();
+
+    fs_init();
+
+    gpio_init();
     led_init();
     uart_init();
     sys_init();

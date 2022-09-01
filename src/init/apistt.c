@@ -1,6 +1,7 @@
 #include "stm32f1xx_hal.h"
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <log.h>
@@ -55,6 +56,8 @@ void apistt_loop()
     if (nread == 0) return;
     atbuf_write_advance(rxbuf, nread);
 
+    int fd = open("/dev/led0", 0);
+
     while (atbuf_used(rxbuf)) {
         uint32_t offset = srrp_next_packet_offset(
             atbuf_read_pos(rxbuf), atbuf_used(rxbuf));
@@ -63,6 +66,7 @@ void apistt_loop()
         if (req == NULL) {
             write(fd_stt, atbuf_read_pos(rxbuf), nread);
             atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
+            close(fd);
             return;
         }
         atbuf_read_advance(rxbuf, req->len);
@@ -73,15 +77,21 @@ void apistt_loop()
             int nr = write(fd_stt, resp->raw, resp->len);
             assert(nr != -1);
             assert(nr != 0);
-            if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
-                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+            char tmp[4] = {0};
+            read(fd, tmp, 4);
+            if (atoi(tmp) == 0) {
+                write(fd, "1", 1);
             } else {
-                HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+                write(fd, "0", 1);
             }
+
             srrp_free(resp);
         }
         srrp_free(req);
     }
+
+    close(fd);
 
     if ((HAL_GetTick() / 1000) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
