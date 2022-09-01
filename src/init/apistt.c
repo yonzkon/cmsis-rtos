@@ -26,7 +26,7 @@ int apistt_init()
 {
     rxbuf = atbuf_new(0);
     hub = svchub_new();
-    fd_stt = open("uart1", 0);
+    fd_stt = open("/dev/ttyS0", 0);
     assert(fd_stt);
 
     svchub_add_service(hub, "/8888/echo", on_echo);

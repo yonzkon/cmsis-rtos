@@ -1,7 +1,10 @@
 #include "stm32f1xx_hal.h"
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <printk.h>
 #include <ringbuf.h>
+#include <fs.h>
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -166,6 +169,70 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     }
 }
 
+struct uart_struct {
+    struct inode *inode;
+};
+
+struct uart_struct uart0;
+struct uart_struct uart1;
+
+int uart_open(struct inode *inode)
+{
+    return 0;
+}
+
+int uart_close(struct inode *inode)
+{
+    return 0;
+}
+
+int uart_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+{
+    return 0;
+}
+
+int uart_write(struct inode *inode, const void *buf, uint32_t len)
+{
+    if (inode == uart0.inode) {
+        HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, HAL_MAX_DELAY);
+        return len - huart1.TxXferCount;
+    } else if (inode == uart1.inode) {
+        HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, HAL_MAX_DELAY);
+        return len - huart2.TxXferCount;
+    }
+
+    return -1;
+}
+
+int uart_read(struct inode *inode, void *buf, uint32_t size)
+{
+    if (inode == uart0.inode) {
+        HAL_NVIC_DisableIRQ(USART1_IRQn);
+        int n = ringbuf_used(huart1_rxbuf);
+        if (n > size) n = size;
+        ringbuf_read(huart1_rxbuf, buf, size);
+        HAL_NVIC_EnableIRQ(USART1_IRQn);
+        return n;
+    } else if (inode == uart1.inode) {
+       HAL_NVIC_DisableIRQ(USART2_IRQn);
+        int n = ringbuf_used(huart2_rxbuf);
+        if (n > size) n = size;
+        ringbuf_read(huart2_rxbuf, buf, size);
+        HAL_NVIC_EnableIRQ(USART2_IRQn);
+        return n;
+    }
+
+    return -1;
+}
+
+inode_ops_t uart_ops =  {
+    .open = uart_open,
+    .close = uart_close,
+    .ioctl = uart_ioctl,
+    .write = uart_write,
+    .read = uart_read,
+};
+
 void uart_init(void)
 {
     // huart1 init
@@ -178,11 +245,24 @@ void uart_init(void)
     huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     huart1.Init.OverSampling = UART_OVERSAMPLING_16;
     if (HAL_UART_Init(&huart1) != HAL_OK)
-        panic("init huart1 failed");
+        panic("init huart1 faiuart");
     huart1_rxbuf = ringbuf_new(0);
     HAL_UARTEx_ReceiveToIdle_IT(
         &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
         ringbuf_spare(huart1_rxbuf));
+
+    uart0.inode = calloc(1, sizeof(*uart0.inode));
+    uart0.inode->type = INODE_TYPE_CHAR;
+    uart0.inode->ops = uart_ops;
+    INIT_LIST_HEAD(&uart0.inode->node);
+    struct dentry *den0 = calloc(1, sizeof(*den0));
+    snprintf(den0->name, sizeof(den0->name), "%s", "ttyS0");
+    den0->type = DENTRY_TYPE_FILE;
+    den0->parent = NULL;
+    INIT_LIST_HEAD(&den0->childs);
+    INIT_LIST_HEAD(&den0->child_node);
+    den0->inode = uart0.inode;
+    dentry_add("/dev", den0);
 
     // huart2 init
     huart2.Instance = USART2;
@@ -194,9 +274,22 @@ void uart_init(void)
     huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     huart2.Init.OverSampling = UART_OVERSAMPLING_16;
     if (HAL_UART_Init(&huart2) != HAL_OK)
-        panic("init huart2 failed");
+        panic("init huart2 faiuart");
     huart2_rxbuf = ringbuf_new(0);
     HAL_UARTEx_ReceiveToIdle_IT(
         &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
         ringbuf_spare(huart2_rxbuf));
+
+    uart1.inode = calloc(1, sizeof(*uart1.inode));
+    uart1.inode->type = INODE_TYPE_CHAR;
+    uart1.inode->ops = uart_ops;
+    INIT_LIST_HEAD(&uart1.inode->node);
+    struct dentry *den1 = calloc(1, sizeof(*den1));
+    snprintf(den1->name, sizeof(den1->name), "%s", "ttyS1");
+    den1->type = DENTRY_TYPE_FILE;
+    den1->parent = NULL;
+    INIT_LIST_HEAD(&den1->childs);
+    INIT_LIST_HEAD(&den1->child_node);
+    den1->inode = uart1.inode;
+    dentry_add("/dev", den1);
 }
