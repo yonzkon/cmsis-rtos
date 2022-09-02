@@ -1,4 +1,3 @@
-#include "stm32f1xx_hal.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -93,7 +92,7 @@ void apistt_loop()
 
     close(fd);
 
-    if ((HAL_GetTick() / 1000) % 600 == 0) {
+    if (time(0) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
             8888, "/8888/alive", "{}");
         write(fd_stt, pac->raw, pac->len);

@@ -6,11 +6,11 @@
 
 extern UART_HandleTypeDef huart1;
 
-static char buffer[512];
-
 static int vprintk(const char *format, va_list ap)
 {
     assert(format && *format != '\0');
+
+    static char buffer[512];
 
     int rc = vsnprintf(buffer, sizeof(buffer), format, ap);
     if (rc) {

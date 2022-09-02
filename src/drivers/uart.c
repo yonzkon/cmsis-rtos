@@ -7,9 +7,9 @@
 #include <fs/fs.h>
 
 UART_HandleTypeDef huart1;
-UART_HandleTypeDef huart2;
-struct ringbuf *huart1_rxbuf;
-struct ringbuf *huart2_rxbuf;
+static UART_HandleTypeDef huart2;
+static struct ringbuf *huart1_rxbuf;
+static struct ringbuf *huart2_rxbuf;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {

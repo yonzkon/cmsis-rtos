@@ -41,6 +41,12 @@ void HAL_MspInit(void)
     __HAL_RCC_PWR_CLK_ENABLE();
 }
 
+void board_init(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+}
+
 /*
  * IRQ Handlers
  */

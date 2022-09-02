@@ -1,12 +1,11 @@
-#include "stm32f1xx_hal.h"
 #include <printk.h>
+#include <syscall/syscall.h>
 #include <fs/fs.h>
 #include <drivers/gpio.h>
 #include <drivers/led.h>
 #include <drivers/uart.h>
-#include <syscall/syscall.h>
 
-extern void SystemClock_Config(void);
+extern void board_init(void);
 extern void init(void);
 
 #define move_to_user_mode()      \
@@ -16,15 +15,14 @@ extern void init(void);
 
 int main(void)
 {
-    HAL_Init();
-    SystemClock_Config();
+    board_init();
 
+    sys_init();
     fs_init();
 
     gpio_init();
     led_init();
     uart_init();
-    sys_init();
 
     printk("fenix init finished, start user init ...");
 
