@@ -57,5 +57,6 @@ int dentry_del(const char *path);
 
 struct dentry *fs_get_root(void);
 void fs_init(void);
+void fs_sys_init(void);
 
 #endif

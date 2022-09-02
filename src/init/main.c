@@ -1,10 +1,10 @@
 #include "stm32f1xx_hal.h"
 #include <printk.h>
-#include <fs.h>
-#include <gpio.h>
-#include <led.h>
-#include <uart.h>
-#include <syscall.h>
+#include <fs/fs.h>
+#include <drivers/gpio.h>
+#include <drivers/led.h>
+#include <drivers/uart.h>
+#include <syscall/syscall.h>
 
 extern void SystemClock_Config(void);
 extern void init(void);

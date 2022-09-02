@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <printk.h>
 #include <ringbuf.h>
-#include <fs.h>
+#include <fs/fs.h>
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;

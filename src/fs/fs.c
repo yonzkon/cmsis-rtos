@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <string.h>
-#include <fs.h>
+#include <fs/fs.h>
 #include <stdio.h>
 
 static struct inode i_root;
@@ -73,6 +73,8 @@ void fs_init(void)
     INIT_LIST_HEAD(&d_dev.child_node);
     list_add(&d_dev.child_node, &d_root.childs);
     d_dev.inode = NULL;
+
+    fs_sys_init();
 }
 
 static struct dentry *__dentry_walk(const char *path, struct dentry *dentry)

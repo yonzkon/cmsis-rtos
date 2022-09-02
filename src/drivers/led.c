@@ -2,7 +2,7 @@
 #include "led.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <fs.h>
+#include <fs/fs.h>
 
 #define LED0 0
 #define LED1 1

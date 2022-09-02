@@ -117,10 +117,8 @@ AS_INCLUDES =
 C_INCLUDES =  \
 -Ilibmodbus/src \
 -Iapix/src \
+-Isrc \
 -Isrc/include \
--Isrc/syscall \
--Isrc/drivers \
--Isrc/fs \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F1xx/Include \
