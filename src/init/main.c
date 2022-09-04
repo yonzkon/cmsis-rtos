@@ -5,6 +5,7 @@
 #include <drivers/led.h>
 #include <drivers/uart.h>
 #include <drivers/spi.h>
+#include <net/net.h>
 
 extern void board_init(void);
 extern void init(void);
@@ -25,6 +26,8 @@ int main(void)
     led_init();
     uart_init();
     spi_init();
+
+    net_init();
 
     printk("fenix init finished, start user init ...");
 

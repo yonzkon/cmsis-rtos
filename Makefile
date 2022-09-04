@@ -44,6 +44,7 @@ $(wildcard src/init/*.c) \
 $(wildcard src/syscall/*.c) \
 $(wildcard src/drivers/*.c) \
 $(wildcard src/fs/*.c) \
+$(wildcard src/net/*.c) \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
