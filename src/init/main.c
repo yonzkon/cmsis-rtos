@@ -4,6 +4,7 @@
 #include <drivers/gpio.h>
 #include <drivers/led.h>
 #include <drivers/uart.h>
+#include <drivers/spi.h>
 
 extern void board_init(void);
 extern void init(void);
@@ -23,6 +24,7 @@ int main(void)
     gpio_init();
     led_init();
     uart_init();
+    spi_init();
 
     printk("fenix init finished, start user init ...");
 
