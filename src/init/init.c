@@ -13,6 +13,7 @@ extern void apistt_loop();
 void init(void)
 {
     log_set_level(LOG_LV_INFO);
+    open("/dev/ttyS1", 0);
     apistt_init();
     LOG_INFO("system initial finished, start main loop ...");
 
