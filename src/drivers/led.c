@@ -35,22 +35,22 @@ static void led_off(struct led_struct *led)
     }
 }
 
-int led_open(struct inode *inode)
+static int led_open(struct inode *inode)
 {
     return 0;
 }
 
-int led_close(struct inode *inode)
+static int led_close(struct inode *inode)
 {
     return 0;
 }
 
-int led_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+static int led_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-int led_write(struct inode *inode, const void *buf, uint32_t len)
+static int led_write(struct inode *inode, const void *buf, uint32_t len)
 {
     if (atoi(buf) == 1) {
         if (inode == led0.inode)
@@ -66,7 +66,7 @@ int led_write(struct inode *inode, const void *buf, uint32_t len)
     return -1;
 }
 
-int led_read(struct inode *inode, void *buf, uint32_t size)
+static int led_read(struct inode *inode, void *buf, uint32_t size)
 {
     if (inode == led0.inode) {
         ((char *)buf)[0] = led0.state + 0x30;
@@ -78,7 +78,7 @@ int led_read(struct inode *inode, void *buf, uint32_t size)
     return -1;
 }
 
-inode_ops_t led_ops =  {
+static inode_ops_t led_ops =  {
     .open = led_open,
     .close = led_close,
     .ioctl = led_ioctl,

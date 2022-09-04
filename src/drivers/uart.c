@@ -173,30 +173,30 @@ struct uart_struct {
     struct inode *inode;
 };
 
-struct uart_struct uart0;
-struct uart_struct uart1;
+static struct uart_struct uart1;
+static struct uart_struct uart2;
 
-int uart_open(struct inode *inode)
+static int uart_open(struct inode *inode)
 {
     return 0;
 }
 
-int uart_close(struct inode *inode)
+static int uart_close(struct inode *inode)
 {
     return 0;
 }
 
-int uart_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+static int uart_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-int uart_write(struct inode *inode, const void *buf, uint32_t len)
+static int uart_write(struct inode *inode, const void *buf, uint32_t len)
 {
-    if (inode == uart0.inode) {
+    if (inode == uart1.inode) {
         HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, HAL_MAX_DELAY);
         return len - huart1.TxXferCount;
-    } else if (inode == uart1.inode) {
+    } else if (inode == uart2.inode) {
         HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, HAL_MAX_DELAY);
         return len - huart2.TxXferCount;
     }
@@ -204,16 +204,16 @@ int uart_write(struct inode *inode, const void *buf, uint32_t len)
     return -1;
 }
 
-int uart_read(struct inode *inode, void *buf, uint32_t size)
+static int uart_read(struct inode *inode, void *buf, uint32_t size)
 {
-    if (inode == uart0.inode) {
+    if (inode == uart1.inode) {
         HAL_NVIC_DisableIRQ(USART1_IRQn);
         int n = ringbuf_used(huart1_rxbuf);
         if (n > size) n = size;
         ringbuf_read(huart1_rxbuf, buf, size);
         HAL_NVIC_EnableIRQ(USART1_IRQn);
         return n;
-    } else if (inode == uart1.inode) {
+    } else if (inode == uart2.inode) {
        HAL_NVIC_DisableIRQ(USART2_IRQn);
         int n = ringbuf_used(huart2_rxbuf);
         if (n > size) n = size;
@@ -225,7 +225,7 @@ int uart_read(struct inode *inode, void *buf, uint32_t size)
     return -1;
 }
 
-inode_ops_t uart_ops =  {
+static inode_ops_t uart_ops =  {
     .open = uart_open,
     .close = uart_close,
     .ioctl = uart_ioctl,
@@ -245,40 +245,11 @@ void uart_init(void)
     huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     huart1.Init.OverSampling = UART_OVERSAMPLING_16;
     if (HAL_UART_Init(&huart1) != HAL_OK)
-        panic("init huart1 faiuart");
+        panic("init huart1 failed");
     huart1_rxbuf = ringbuf_new(0);
     HAL_UARTEx_ReceiveToIdle_IT(
         &huart1, (uint8_t *)ringbuf_write_pos(huart1_rxbuf),
         ringbuf_spare(huart1_rxbuf));
-
-    uart0.inode = calloc(1, sizeof(*uart0.inode));
-    uart0.inode->type = INODE_TYPE_CHAR;
-    uart0.inode->ops = uart_ops;
-    INIT_LIST_HEAD(&uart0.inode->node);
-    struct dentry *den0 = calloc(1, sizeof(*den0));
-    snprintf(den0->name, sizeof(den0->name), "%s", "ttyS0");
-    den0->type = DENTRY_TYPE_FILE;
-    den0->parent = NULL;
-    INIT_LIST_HEAD(&den0->childs);
-    INIT_LIST_HEAD(&den0->child_node);
-    den0->inode = uart0.inode;
-    dentry_add("/dev", den0);
-
-    // huart2 init
-    huart2.Instance = USART2;
-    huart2.Init.BaudRate = 115200;
-    huart2.Init.WordLength = UART_WORDLENGTH_8B;
-    huart2.Init.StopBits = UART_STOPBITS_1;
-    huart2.Init.Parity = UART_PARITY_NONE;
-    huart2.Init.Mode = UART_MODE_TX_RX;
-    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart2) != HAL_OK)
-        panic("init huart2 faiuart");
-    huart2_rxbuf = ringbuf_new(0);
-    HAL_UARTEx_ReceiveToIdle_IT(
-        &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
-        ringbuf_spare(huart2_rxbuf));
 
     uart1.inode = calloc(1, sizeof(*uart1.inode));
     uart1.inode->type = INODE_TYPE_CHAR;
@@ -292,4 +263,33 @@ void uart_init(void)
     INIT_LIST_HEAD(&den1->child_node);
     den1->inode = uart1.inode;
     dentry_add("/dev", den1);
+
+    // huart2 init
+    huart2.Instance = USART2;
+    huart2.Init.BaudRate = 115200;
+    huart2.Init.WordLength = UART_WORDLENGTH_8B;
+    huart2.Init.StopBits = UART_STOPBITS_1;
+    huart2.Init.Parity = UART_PARITY_NONE;
+    huart2.Init.Mode = UART_MODE_TX_RX;
+    huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart2) != HAL_OK)
+        panic("init huart2 failed");
+    huart2_rxbuf = ringbuf_new(0);
+    HAL_UARTEx_ReceiveToIdle_IT(
+        &huart2, (uint8_t *)ringbuf_write_pos(huart2_rxbuf),
+        ringbuf_spare(huart2_rxbuf));
+
+    uart2.inode = calloc(1, sizeof(*uart2.inode));
+    uart2.inode->type = INODE_TYPE_CHAR;
+    uart2.inode->ops = uart_ops;
+    INIT_LIST_HEAD(&uart2.inode->node);
+    struct dentry *den2 = calloc(1, sizeof(*den2));
+    snprintf(den2->name, sizeof(den2->name), "%s", "ttyS2");
+    den2->type = DENTRY_TYPE_FILE;
+    den2->parent = NULL;
+    INIT_LIST_HEAD(&den2->childs);
+    INIT_LIST_HEAD(&den2->child_node);
+    den2->inode = uart2.inode;
+    dentry_add("/dev", den2);
 }

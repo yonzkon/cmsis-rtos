@@ -16,7 +16,7 @@ void init(void)
     apistt_init();
     LOG_INFO("system initial finished, start main loop ...");
 
-    modbus_t *ctx = modbus_new_rtu("/dev/ttyS1", 115200, 'N', 8, 0);
+    modbus_t *ctx = modbus_new_rtu("/dev/ttyS2", 115200, 'N', 8, 0);
     modbus_set_slave(ctx, 12);
     modbus_mapping_t *map = modbus_mapping_new(100, 100, 100, 100);
     modbus_connect(ctx);
