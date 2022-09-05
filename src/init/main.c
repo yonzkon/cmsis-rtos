@@ -19,14 +19,17 @@ int main(void)
 {
     board_init();
 
+    // sys
     sys_init();
     fs_init();
 
+    // drivers
     gpio_init();
     led_init();
     uart_init();
     spi_init();
 
+    // w5500
     net_init();
 
     printk("fenix init finished, start user init ...");

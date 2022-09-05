@@ -1,7 +1,9 @@
-#include <unistd.h>
-#include <fcntl.h>
 #include <malloc.h>
 #include <log.h>
+
+extern int shell_init();
+extern int shell_fini();
+extern void shell_loop();
 
 extern int apistt_init();
 extern int apistt_fini();
@@ -13,9 +15,9 @@ extern void modbus_slave_loop();
 
 void init(void)
 {
-    open("/dev/ttyS1", 0);
     log_set_level(LOG_LV_INFO);
 
+    shell_init();
     apistt_init();
     modbus_slave_init();
     LOG_INFO("system initial finished, start main loop ...");
@@ -24,6 +26,7 @@ void init(void)
         apistt_loop();
         modbus_slave_loop();
 
+        shell_loop();
         usleep(100 * 1000);
 
         struct mallinfo info = mallinfo();
@@ -34,4 +37,5 @@ void init(void)
     LOG_INFO("exit main loop ...");
     modbus_slave_fini();
     apistt_fini();
+    shell_fini();
 }
