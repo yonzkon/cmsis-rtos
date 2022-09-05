@@ -58,6 +58,7 @@ int sys_open(const char *pathname, int flags)
                 pos->inode = den->inode;
                 if (den->inode->ops.open)
                     den->inode->ops.open(den->inode);
+                INIT_LIST_HEAD(&pos->node);
                 list_add(&pos->node, &files);
                 return i;
             }
