@@ -5,6 +5,7 @@
 #include <drivers/led.h>
 #include <drivers/uart.h>
 #include <drivers/spi.h>
+#include <drivers/rtc.h>
 #include <net/net.h>
 
 extern void board_init(void);
@@ -28,6 +29,7 @@ int main(void)
     led_init();
     uart_init();
     spi_init();
+    rtc_init();
 
     // w5500
     net_init();
