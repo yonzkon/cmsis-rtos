@@ -1,4 +1,4 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_utils.h"
 #include "syscall.h"
 #include <sys/time.h>
 #include <sys/select.h>
@@ -31,17 +31,18 @@ int _close(int fd)
     return retval;
 }
 
-int usleep(useconds_t usec)
+int nanosleep(const struct timespec *rqtp, struct timespec *rmtp)
 {
-    HAL_Delay(usec / 1000);
+    syscall2(SYS_NANOSLEEP, rqtp, rmtp);
     return 0;
 }
 
-int nanosleep(const struct timespec *rqtp, struct timespec *rmtp)
+int usleep(useconds_t usec)
 {
-    //syscall2(SYS_NANOSLEEP, rqtp, rmtp);
-    HAL_Delay(rqtp->tv_sec * 1000 + rqtp->tv_nsec / 1000 / 1000);
-    return 0;
+    struct timespec rqtp = {0};
+    rqtp.tv_sec = usec / (1000 * 1000);
+    rqtp.tv_nsec = usec % (1000 * 1000) * 1000;
+    return nanosleep(&rqtp, NULL);
 }
 
 int select(int nfds, fd_set *restrict readfds,

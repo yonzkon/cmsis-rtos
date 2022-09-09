@@ -1,12 +1,11 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_gpio.h"
+#include "stm32f1xx_ll_utils.h"
 #include "wizchip_conf.h"
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <printk.h>
 #include <unistd.h>
-
-extern SPI_HandleTypeDef hspi1;
 
 static void cris_en(void)
 {
@@ -22,12 +21,12 @@ static void cris_ex(void)
 
 static void cs_sel(void)
 {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+    LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
 }
 
 static void cs_desel(void)
 {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+    LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
 }
 
 static uint8_t spi_read_send_byte(uint8_t byte)
@@ -50,10 +49,10 @@ static void spi_wb(uint8_t TxData)
 
 static void w5500_reset(void)
 {
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
-    HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
-    HAL_Delay(1500);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_1);
+    LL_mDelay(500);
+    LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_1);
+    LL_mDelay(1500);
 }
 
 static void w5500_init(void)
@@ -72,7 +71,7 @@ void w5500_phy_check(void)
     printk("check physical connection .");
     while ((0x01 & getPHYCFGR()) == 0) {
         printk(" .");
-        HAL_Delay(500);
+        LL_mDelay(500);
     }
     printk(" \n");
 }
@@ -83,7 +82,7 @@ void w5500_set_netinfo(wiz_NetInfo wiz_netinfo)
     printk("w5500 version: %d\n", v);
 
     ctlnetwork(CN_SET_NETINFO, (void*)&wiz_netinfo);
-    HAL_Delay(1000);
+    LL_mDelay(1000);
     ctlnetwork(CN_GET_NETINFO, (void*)&wiz_netinfo);
     printk("mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
            wiz_netinfo.mac[0],

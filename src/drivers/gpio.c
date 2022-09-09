@@ -1,32 +1,32 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_gpio.h"
+#include "stm32f1xx_ll_exti.h"
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if (GPIO_Pin == GPIO_PIN_0) {
-        if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == GPIO_PIN_SET) {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
-        } else {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
-        }
-    }
-}
 void EXTI0_IRQHandler(void)
 {
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+    LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_0);
+    LL_GPIO_TogglePin(GPIOC, LL_GPIO_PIN_13);
+    LL_GPIO_TogglePin(GPIOA, LL_GPIO_PIN_1);
 }
 
 void gpio_init(void)
 {
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_0;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+    LL_GPIO_AF_SetEXTISource(LL_GPIO_AF_EXTI_PORTA, LL_GPIO_AF_EXTI_LINE0);
+
+    LL_EXTI_InitTypeDef EXTI_InitStruct = {0};
+    EXTI_InitStruct.Line_0_31 = LL_EXTI_LINE_0;
+    EXTI_InitStruct.LineCommand = ENABLE;
+    EXTI_InitStruct.Mode = LL_EXTI_MODE_IT;
+    EXTI_InitStruct.Trigger = LL_EXTI_TRIGGER_FALLING;
+    LL_EXTI_Init(&EXTI_InitStruct);
+
+    LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_0, LL_GPIO_PULL_UP);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_INPUT);
+
+    NVIC_SetPriority(EXTI0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+    NVIC_EnableIRQ(EXTI0_IRQn);
 }
