@@ -3,8 +3,9 @@
 #include <fs/fs.h>
 #include <drivers/gpio.h>
 #include <drivers/led.h>
-#include <drivers/uart.h>
 #include <drivers/spi.h>
+#include <drivers/i2c.h>
+#include <drivers/uart.h>
 #include <net/net.h>
 
 extern void board_init(void);
@@ -26,8 +27,9 @@ int main(void)
     // drivers
     gpio_init();
     led_init();
-    uart_init();
     spi_init();
+    i2c_init();
+    uart_init();
 
     // w5500
     net_init();
