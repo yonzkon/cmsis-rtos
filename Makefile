@@ -58,8 +58,6 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_spi.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_wwdg.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
@@ -67,7 +65,8 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_rcc.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_utils.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_exti.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usart.c
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usart.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_spi.c
 
 # ASM sources
 ASM_SOURCES =  \

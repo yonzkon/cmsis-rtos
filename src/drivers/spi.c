@@ -1,64 +1,10 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_gpio.h"
+#include "stm32f1xx_ll_spi.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <printk.h>
 #include <fs/fs.h>
-
-static SPI_HandleTypeDef hspi1;
-
-void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
-{
-    if (hspi->Instance == SPI1) {
-        GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-        __HAL_RCC_SPI1_CLK_ENABLE();
-        __HAL_RCC_GPIOA_CLK_ENABLE();
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-
-        /*
-         * SPI1 GPIO Configuration
-         * PA4     ------> SPI1_NSS
-         * PA5     ------> SPI1_SCK
-         * PA6     ------> SPI1_MISO
-         * PA7     ------> SPI1_MOSI
-         * PB1     ------> SPI1_RST
-         */
-
-        GPIO_InitStruct.Pin = GPIO_PIN_4;
-        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-        GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-        GPIO_InitStruct.Pin = GPIO_PIN_1;
-        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    }
-}
-
-void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
-{
-    if (hspi->Instance == SPI1) {
-        __HAL_RCC_SPI1_CLK_DISABLE();
-
-        /*
-         * SPI1 GPIO Configuration
-         * PA4     ------> SPI1_NSS
-         * PA5     ------> SPI1_SCK
-         * PA6     ------> SPI1_MISO
-         * PA7     ------> SPI1_MOSI
-         * PB1     ------> SPI1_RST
-         */
-
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7);
-        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_1);
-    }
-}
 
 struct spi_struct {
     struct inode *inode;
@@ -99,24 +45,56 @@ static inode_ops_t spi_ops =  {
     .read = spi_read,
 };
 
-void spi_init(void)
+static void SPI1_init(void)
 {
-    hspi1.Instance = SPI1;
-    hspi1.Init.Mode = SPI_MODE_MASTER;
-    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-    hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-    hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi1.Init.CRCPolynomial = 7;
-    if (HAL_SPI_Init(&hspi1) != HAL_OK)
-        panic("init hspi1 failed");
-    __HAL_SPI_ENABLE(&hspi1);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SPI1);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOB);
 
+    /*
+     * SPI1 GPIO Configuration
+     * PA4     ------> SPI1_NSS
+     * PA5     ------> SPI1_SCK
+     * PA6     ------> SPI1_MISO
+     * PA7     ------> SPI1_MOSI
+     * PB1     ------> SPI1_RST
+     */
+
+    LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin = LL_GPIO_PIN_4;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = LL_GPIO_PIN_5|LL_GPIO_PIN_6|LL_GPIO_PIN_7;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    LL_SPI_InitTypeDef SPI_InitStruct = {0};
+    SPI_InitStruct.TransferDirection = LL_SPI_FULL_DUPLEX;
+    SPI_InitStruct.Mode = LL_SPI_MODE_MASTER;
+    SPI_InitStruct.DataWidth = LL_SPI_DATAWIDTH_8BIT;
+    SPI_InitStruct.ClockPolarity = LL_SPI_POLARITY_HIGH;
+    SPI_InitStruct.ClockPhase = LL_SPI_PHASE_2EDGE;
+    SPI_InitStruct.NSS = LL_SPI_NSS_SOFT;
+    SPI_InitStruct.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV4;
+    SPI_InitStruct.BitOrder = LL_SPI_MSB_FIRST;
+    SPI_InitStruct.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
+    SPI_InitStruct.CRCPoly = 7;
+    LL_SPI_Init(SPI1, &SPI_InitStruct);
+    LL_SPI_Enable(SPI1);
+
+    // fs init
     spi1.inode = calloc(1, sizeof(*spi1.inode));
     spi1.inode->type = INODE_TYPE_CHAR;
     spi1.inode->ops = spi_ops;
@@ -129,4 +107,9 @@ void spi_init(void)
     INIT_LIST_HEAD(&den1->child_node);
     den1->inode = spi1.inode;
     dentry_add("/dev", den1);
+}
+
+void spi_init(void)
+{
+    SPI1_init();
 }
