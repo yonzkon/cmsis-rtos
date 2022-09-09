@@ -1,5 +1,22 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_bus.h"
+#include "stm32f1xx_ll_rcc.h"
+#include "stm32f1xx_ll_system.h"
+#include "stm32f1xx_ll_gpio.h"
+#include "stm32f1xx_ll_utils.h"
 #include <printk.h>
+
+#ifndef NVIC_PRIORITYGROUP_0
+#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
+                                                                 4 bits for subpriority */
+#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006) /*!< 1 bit  for pre-emption priority,
+                                                                 3 bits for subpriority */
+#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005) /*!< 2 bits for pre-emption priority,
+                                                                 2 bits for subpriority */
+#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004) /*!< 3 bits for pre-emption priority,
+                                                                 1 bit  for subpriority */
+#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority,
+                                                                 0 bit  for subpriority */
+#endif
 
 /*
  * board init
@@ -7,46 +24,55 @@
 
 void SystemClock_Config(void)
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
+    while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_0)
+    {
+    }
+    LL_RCC_HSI_SetCalibTrimming(16);
+    LL_RCC_HSI_Enable();
 
-    /*
-     * Initializes the RCC Oscillators according to the specified parameters
-     * in the RCC_OscInitTypeDef structure.
-     */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    //RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
-    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL4;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-        panic("SystemClock_Config RCC_Osc failed");
+    /* Wait till HSI is ready */
+    while(LL_RCC_HSI_IsReady() != 1)
+    {
+    }
+    LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSI_DIV_2, LL_RCC_PLL_MUL_4);
+    LL_RCC_PLL_Enable();
 
-    /*
-     * Initializes the CPU, AHB and APB buses clocks
-     */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                                |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+    /* Wait till PLL is ready */
+    while(LL_RCC_PLL_IsReady() != 1)
+    {
+    }
+    LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
+    LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
+    LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
+    LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-        panic("SystemClock_Config RCC_Clk failed");
-}
-
-void HAL_MspInit(void)
-{
-    __HAL_RCC_AFIO_CLK_ENABLE();
-    __HAL_RCC_PWR_CLK_ENABLE();
+    /* Wait till System clock is ready */
+    while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
+    {
+    }
+    LL_Init1msTick(16000000);
+    LL_SetSystemCoreClock(16000000);
 }
 
 void board_init(void)
 {
-    HAL_Init();
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+
+    /* System interrupt init*/
+    NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+
+    /* SysTick_IRQn interrupt configuration */
+    NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
+
+    /*
+     * DISABLE: JTAG-DP Disabled and SW-DP Disabled
+     */
+    //LL_GPIO_AF_DisableRemap_SWJ();
+
+    /* Configure the system clock */
     SystemClock_Config();
 }
 
@@ -94,5 +120,4 @@ void PendSV_Handler(void)
 
 void SysTick_Handler(void)
 {
-    HAL_IncTick();
 }
