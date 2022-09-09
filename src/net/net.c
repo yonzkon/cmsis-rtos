@@ -6,6 +6,7 @@
 #include <string.h>
 #include <printk.h>
 #include <unistd.h>
+#include <drivers/spi.h>
 
 static void cris_en(void)
 {
@@ -29,22 +30,14 @@ static void cs_desel(void)
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
 }
 
-static uint8_t spi_read_send_byte(uint8_t byte)
-{
-    while((SPI1->SR & SPI_SR_TXE) == RESET);
-    SPI1->DR = byte;
-    while((SPI1->SR & SPI_SR_RXNE) == RESET);
-    return SPI1->DR;
-}
-
 static uint8_t spi_rb(void)
 {
-    return spi_read_send_byte(0x00);
+    return SPI1_read_send_byte(0x00);
 }
 
 static void spi_wb(uint8_t TxData)
 {
-    spi_read_send_byte(TxData);
+    SPI1_read_send_byte(TxData);
 }
 
 static void w5500_reset(void)

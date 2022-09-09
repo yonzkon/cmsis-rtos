@@ -113,3 +113,11 @@ void spi_init(void)
 {
     SPI1_init();
 }
+
+uint8_t SPI1_read_send_byte(uint8_t byte)
+{
+    while((SPI1->SR & SPI_SR_TXE) == RESET);
+    SPI1->DR = byte;
+    while((SPI1->SR & SPI_SR_RXNE) == RESET);
+    return SPI1->DR;
+}
