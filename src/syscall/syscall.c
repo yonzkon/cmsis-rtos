@@ -31,10 +31,18 @@ int _close(int fd)
     return retval;
 }
 
+int _gettimeofday(struct timeval *tp, void *tzp)
+{
+    syscall2(SYS_GETTIMEOFDAY, tp, tzp);
+    register int retval __asm__("r0");
+    return retval;
+}
+
 int nanosleep(const struct timespec *rqtp, struct timespec *rmtp)
 {
     syscall2(SYS_NANOSLEEP, rqtp, rmtp);
-    return 0;
+    register int retval __asm__("r0");
+    return retval;
 }
 
 int usleep(useconds_t usec)

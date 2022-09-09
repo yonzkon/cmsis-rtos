@@ -18,6 +18,8 @@
                                                                  0 bit  for subpriority */
 #endif
 
+uint64_t ms_SysTick;
+
 /*
  * board init
  */
@@ -52,6 +54,7 @@ void SystemClock_Config(void)
     {
     }
     LL_Init1msTick(16000000);
+    SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
     LL_SetSystemCoreClock(16000000);
 }
 
@@ -120,4 +123,5 @@ void PendSV_Handler(void)
 
 void SysTick_Handler(void)
 {
+    ms_SysTick++;
 }

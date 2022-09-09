@@ -8,6 +8,7 @@
 #define SYS_OPEN 5
 #define SYS_CLOSE 6
 #define SYS_SELECT 24
+#define SYS_GETTIMEOFDAY 161
 #define SYS_NANOSLEEP 162
 
 #define syscall0(no)                            \
