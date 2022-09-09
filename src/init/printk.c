@@ -1,10 +1,8 @@
-#include "stm32f1xx_hal.h"
+#include "stm32f1xx_ll_usart.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
-
-extern UART_HandleTypeDef huart1;
 
 static int vprintk(const char *format, va_list ap)
 {
@@ -14,8 +12,10 @@ static int vprintk(const char *format, va_list ap)
 
     int rc = vsnprintf(buffer, sizeof(buffer), format, ap);
     if (rc) {
-        HAL_UART_Transmit(&huart1, (uint8_t *)buffer, rc, HAL_MAX_DELAY);
-        return rc - huart1.TxXferCount;
+        for (int i = 0; i < rc; i++) {
+            while (!LL_USART_IsActiveFlag_TXE(USART1));
+            LL_USART_TransmitData8(USART1, ((uint8_t *)buffer)[i]);
+        }
     }
 
     return -1;
