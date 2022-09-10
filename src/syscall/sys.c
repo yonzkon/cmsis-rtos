@@ -7,7 +7,7 @@ extern uint64_t ms_SysTick;
 int sys_gettimeofday(struct timeval *tp, void *tzp)
 {
     tp->tv_sec = ms_SysTick / 1000;
-    tp->tv_usec = ms_SysTick * 1000;
+    tp->tv_usec = (ms_SysTick % 1000) * 1000;
     return 0;
 }
 

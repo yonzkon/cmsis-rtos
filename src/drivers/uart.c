@@ -220,8 +220,8 @@ int UART1_read(void *buf, size_t len)
 
 void UART2_write_byte(uint8_t byte)
 {
-    while (!LL_USART_IsActiveFlag_TXE(USART1));
-    LL_USART_TransmitData8(USART1, byte);
+    while (!LL_USART_IsActiveFlag_TXE(USART2));
+    LL_USART_TransmitData8(USART2, byte);
 }
 
 int UART2_write(const void *buf, size_t len)
