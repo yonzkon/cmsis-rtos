@@ -32,7 +32,7 @@ static int i2c_write(struct inode *inode, const void *buf, uint32_t len)
     return 0;
 }
 
-static int i2c_read(struct inode *inode, void *buf, uint32_t size)
+static int i2c_read(struct inode *inode, void *buf, uint32_t len)
 {
     return 0;
 }

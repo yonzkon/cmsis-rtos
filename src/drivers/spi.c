@@ -32,7 +32,7 @@ static int spi_write(struct inode *inode, const void *buf, uint32_t len)
     return 0;
 }
 
-static int spi_read(struct inode *inode, void *buf, uint32_t size)
+static int spi_read(struct inode *inode, void *buf, uint32_t len)
 {
     return 0;
 }

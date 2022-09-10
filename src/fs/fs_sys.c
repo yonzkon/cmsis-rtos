@@ -10,13 +10,13 @@
 static LIST_HEAD(files);
 static char fd_state[64];
 
-int sys_read(int fd, char *buf, int size)
+int sys_read(int fd, char *buf, int len)
 {
     struct file *pos;
     list_for_each_entry(pos, &files, node) {
         if (pos->fd == fd) {
             assert(pos->inode->ops.read);
-            return pos->inode->ops.read(pos->inode, buf, size);
+            return pos->inode->ops.read(pos->inode, buf, len);
         }
     }
 

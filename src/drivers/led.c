@@ -44,7 +44,7 @@ static int led_write(struct inode *inode, const void *buf, uint32_t len)
     return -1;
 }
 
-static int led_read(struct inode *inode, void *buf, uint32_t size)
+static int led_read(struct inode *inode, void *buf, uint32_t len)
 {
     if (inode == led0.inode) {
         if (LL_GPIO_IsOutputPinSet(led0.gpio, led0.gpio_pin))

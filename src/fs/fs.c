@@ -29,7 +29,7 @@ int root_write(struct inode *inode, const void *buf, uint32_t len)
     return -1;
 }
 
-int root_read(struct inode *inode, void *buf, uint32_t size)
+int root_read(struct inode *inode, void *buf, uint32_t len)
 {
     return -1;
 }

@@ -42,7 +42,7 @@ typedef struct inode_ops {
     int (*close)(struct inode *inode);
     int (*ioctl)(struct inode *inode, unsigned int cmd, unsigned long arg);
     int (*write)(struct inode *inode, const void *buf, uint32_t len);
-    int (*read)(struct inode *inode, void *buf, uint32_t size);
+    int (*read)(struct inode *inode, void *buf, uint32_t len);
 } inode_ops_t;
 
 struct inode {
