@@ -32,12 +32,12 @@ static void cs_desel(void)
 
 static uint8_t spi_rb(void)
 {
-    return SPI1_read_send_byte(0x00);
+    return SPI1_read_byte(0x00);
 }
 
 static void spi_wb(uint8_t TxData)
 {
-    SPI1_read_send_byte(TxData);
+    SPI1_write_byte(TxData);
 }
 
 static void w5500_reset(void)
