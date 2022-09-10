@@ -1,8 +1,8 @@
-#include "stm32f1xx_ll_usart.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <drivers/uart.h>
 
 static int vprintk(const char *format, va_list ap)
 {
@@ -11,12 +11,7 @@ static int vprintk(const char *format, va_list ap)
     static char buffer[512];
 
     int rc = vsnprintf(buffer, sizeof(buffer), format, ap);
-    if (rc) {
-        for (int i = 0; i < rc; i++) {
-            while (!LL_USART_IsActiveFlag_TXE(USART1));
-            LL_USART_TransmitData8(USART1, ((uint8_t *)buffer)[i]);
-        }
-    }
+    UART1_write(buffer, rc);
 
     return -1;
 }
