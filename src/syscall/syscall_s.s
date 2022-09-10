@@ -14,7 +14,7 @@ __syscall:
     MOV R2, R3
     MOV R3, R4
     MOV R4, R5
-    swi 0                         // to at_syscall
+    svc 0                         // to at_syscall
     LDMFD R13!, {R1 - R7, R15}
 
     .global at_syscall

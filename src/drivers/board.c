@@ -69,6 +69,7 @@ void board_init(void)
 
     /* SysTick_IRQn interrupt configuration */
     NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
+    NVIC_SetPriority(SVCall_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),14, 0));
 
     /*
      * DISABLE: JTAG-DP Disabled and SW-DP Disabled
