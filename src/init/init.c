@@ -20,12 +20,12 @@ void init(void)
 
     shell_init();
     apistt_init();
-    modbus_slave_init();
+    //modbus_slave_init();
     LOG_INFO("system initial finished, start main loop ...");
 
     while (1) {
         apistt_loop();
-        modbus_slave_loop();
+        //modbus_slave_loop();
 
         shell_loop();
         usleep(100 * 1000);
@@ -36,7 +36,7 @@ void init(void)
     }
 
     LOG_INFO("exit main loop ...");
-    modbus_slave_fini();
+    //modbus_slave_fini();
     apistt_fini();
     shell_fini();
 }

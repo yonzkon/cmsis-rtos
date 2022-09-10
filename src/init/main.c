@@ -34,7 +34,7 @@ int main(void)
     // w5500
     net_init();
 
-    printk("fenix init finished, start user init ...");
+    printk("fenix init finished, start user init ...\n");
 
     move_to_user_mode();
     init();
