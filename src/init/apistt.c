@@ -134,3 +134,17 @@ void apistt_loop(void)
         close_socket(fd_tcp);
     }
 }
+
+void apistt_main(void)
+{
+    apistt_init();
+    LOG_INFO("start apistt ...");
+
+    while (1) {
+        apistt_loop();
+        usleep(100 * 1000);
+    }
+
+    LOG_INFO("exit apistt ...");
+    apistt_fini();
+}

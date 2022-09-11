@@ -1,4 +1,5 @@
 #include <printk.h>
+#include <task.h>
 #include <syscall/syscall.h>
 #include <fs/fs.h>
 #include <drivers/gpio.h>
@@ -9,12 +10,6 @@
 #include <net/net.h>
 
 extern void board_init(void);
-extern void init(void);
-
-#define move_to_user_mode()      \
-    __asm__("MRS r0, CONTROL;"); \
-    __asm__("ORR r0, #1;");      \
-    __asm__("MSR CONTROL, r0;");
 
 int main(void)
 {
@@ -34,8 +29,11 @@ int main(void)
     // w5500
     net_init();
 
-    printk("fenix init finished, start user init ...\n");
+    // task
+    task_init();
 
-    move_to_user_mode();
-    init();
+    printk("fenix init finished, start user tasks ...\n");
+
+    reset_msp();
+    switch_to_user_task(tasks + 0);
 }

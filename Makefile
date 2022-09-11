@@ -57,6 +57,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_spi.c
 # ASM sources
 ASM_SOURCES =  \
 $(wildcard src/syscall/*.s) \
+$(wildcard src/init/*.s) \
 startup_stm32f103xb.s
 
 

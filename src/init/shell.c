@@ -40,3 +40,17 @@ void shell_loop(void)
     if (nread == 0) return;
     cmd_handler(cmd);
 }
+
+void shell_main(void)
+{
+    shell_init();
+    LOG_INFO("start shell ...");
+
+    while (1) {
+        shell_loop();
+        usleep(100 * 1000);
+    }
+
+    LOG_INFO("exit shell ...");
+    shell_fini();
+}

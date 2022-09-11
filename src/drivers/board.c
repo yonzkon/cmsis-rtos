@@ -4,6 +4,7 @@
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_utils.h"
 #include <printk.h>
+#include <task.h>
 
 #ifndef NVIC_PRIORITYGROUP_0
 #define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
@@ -70,6 +71,7 @@ void board_init(void)
     /* SysTick_IRQn interrupt configuration */
     NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
     NVIC_SetPriority(SVCall_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),14, 0));
+    NVIC_SetPriority(PendSV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
     /*
      * DISABLE: JTAG-DP Disabled and SW-DP Disabled
@@ -120,9 +122,20 @@ void DebugMon_Handler(void)
 
 void PendSV_Handler(void)
 {
+    for (int i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++) {
+        if (&tasks[i] == current) {
+            if (tasks[i+1].stack != 0)
+                switch_to(tasks + i + 1);
+            else
+                switch_to(tasks + 0);
+            break;
+        }
+    }
 }
 
 void SysTick_Handler(void)
 {
     ms_SysTick++;
+    if (ms_SysTick % 0x80 == 0)
+        SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }
