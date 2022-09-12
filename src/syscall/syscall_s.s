@@ -17,7 +17,14 @@ __syscall:
 
     .global at_syscall
 at_syscall:
-    STMFD R13!, {R14}
+    STMFD R13!, {R6 - R8, R14}
+
+    // FIXME: why interrupt may change r0, r1, r2 ?
+    MRS R6, PSP
+    LDR R0, [R6, #0]
+    LDR R1, [R6, #4]
+    LDR R2, [R6, #8]
+    LDR R3, [R6, #12]
 
     // call the syscall
     LDR R6, =syscall_table // R8 = syscall_tabl
@@ -29,4 +36,4 @@ at_syscall:
     MRS R6, PSP
     STR R0, [R6, #0]      // store r0 to stack which recover to r0
 
-    LDMFD R13!, {R15}
+    LDMFD R13!, {R6 - R8, R15}

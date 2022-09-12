@@ -3,8 +3,9 @@
 #include "stm32f1xx_ll_system.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_utils.h"
+#include <stdint.h>
+#include <sched.h>
 #include <printk.h>
-#include <task.h>
 
 #ifndef NVIC_PRIORITYGROUP_0
 #define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
@@ -19,7 +20,10 @@
                                                                  0 bit  for subpriority */
 #endif
 
-uint64_t ms_SysTick;
+extern void save_current();
+extern void switch_to(struct task_struct *task);
+
+uint64_t sys_tick_ms;
 
 /*
  * board init
@@ -83,7 +87,7 @@ void board_init(void)
 }
 
 /*
- * IRQ Handlers
+ * Processor Exceptions Handlers
  */
 
 void NMI_Handler(void)
@@ -113,7 +117,9 @@ void UsageFault_Handler(void)
 
 void SVC_Handler(void)
 {
-    __asm__("b at_syscall;");
+    save_current();
+    __asm__("bl at_syscall;");
+    switch_to(current);
 }
 
 void DebugMon_Handler(void)
@@ -122,20 +128,14 @@ void DebugMon_Handler(void)
 
 void PendSV_Handler(void)
 {
-    for (int i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++) {
-        if (&tasks[i] == current) {
-            if (tasks[i+1].stack != 0)
-                switch_to(tasks + i + 1);
-            else
-                switch_to(tasks + 0);
-            break;
-        }
-    }
+    save_current();
+    schedule();
+    switch_to(current);
 }
 
 void SysTick_Handler(void)
 {
-    ms_SysTick++;
-    if (ms_SysTick % 0x80 == 0)
+    sys_tick_ms++;
+    if (sys_tick_ms % 0x80 == 0 && current != 0)
         SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }

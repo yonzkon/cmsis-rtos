@@ -1,13 +1,15 @@
-#include "task.h"
+#include <sched.h>
 #include <stdlib.h>
 
 #define TASK_STACK_SIZE 1024
 
-struct task_struct tasks[8];
+LIST_HEAD(tasks);
 struct task_struct *current;
 
-void task_create(struct task_struct *task, void (*entry)(void))
+static struct task_struct *task_create(void (*entry)(void))
 {
+    struct task_struct *task = calloc(1, sizeof(*task));
+
     task->stack = calloc(1, TASK_STACK_SIZE);
     task->pc = (uint8_t *)entry;
     task->psp = task->stack + TASK_STACK_SIZE - 0x20;
@@ -17,15 +19,22 @@ void task_create(struct task_struct *task, void (*entry)(void))
     *(uint32_t *)(task->psp + 0x14) = 0; // LR
     *(uint32_t *)(task->psp + 0x18) = (uint32_t)entry; // PC
     *(uint32_t *)(task->psp + 0x1c) = 0x1000000; // XPSR
-}
 
-extern void idle(void);
-extern void shell_main(void);
-extern void apistt_main(void);
+    task->state = TASK_RUNNING;
+    task->timeout_ms = 0;
+    INIT_LIST_HEAD(&task->node);
+    list_add_tail(&task->node, &tasks);
+
+    return task;
+}
 
 void task_init(void)
 {
-    task_create(tasks + 0, idle);
-    task_create(tasks + 1, shell_main);
-    task_create(tasks + 2, apistt_main);
+    extern void idle(void);
+    extern void shell_main(void);
+    extern void apistt_main(void);
+
+    current = task_create(idle);
+    task_create(shell_main);
+    task_create(apistt_main);
 }

@@ -1,5 +1,5 @@
 #include <printk.h>
-#include <task.h>
+#include <sched.h>
 #include <syscall/syscall.h>
 #include <fs/fs.h>
 #include <drivers/gpio.h>
@@ -7,6 +7,7 @@
 #include <drivers/spi.h>
 #include <drivers/i2c.h>
 #include <drivers/uart.h>
+#include <drivers/tim.h>
 #include <net/net.h>
 
 extern void board_init(void);
@@ -25,6 +26,7 @@ int main(void)
     spi_init();
     i2c_init();
     uart_init();
+    tim_init();
 
     // w5500
     net_init();
@@ -35,5 +37,5 @@ int main(void)
     printk("fenix init finished, start user tasks ...\n");
 
     reset_msp();
-    switch_to_user_task(tasks + 0);
+    move_to_user_mode();
 }

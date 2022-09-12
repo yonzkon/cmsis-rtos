@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <malloc.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <log.h>
@@ -48,7 +50,13 @@ void shell_main(void)
 
     while (1) {
         shell_loop();
-        usleep(100 * 1000);
+        usleep(1000 * 1000);
+
+        if (time(0) % 5 == 0) {
+             struct mallinfo info = mallinfo();
+             LOG_DEBUG("arena: %d, ordblks: %d, uordblks: %d, fordblks: %d, keepcost: %d",
+                       info.arena, info.ordblks, info.uordblks, info.fordblks, info.keepcost);
+        }
     }
 
     LOG_INFO("exit shell ...");

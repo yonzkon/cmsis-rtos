@@ -142,7 +142,6 @@ void apistt_main(void)
 
     while (1) {
         apistt_loop();
-        usleep(100 * 1000);
     }
 
     LOG_INFO("exit apistt ...");

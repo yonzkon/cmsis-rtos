@@ -73,7 +73,6 @@ static inode_ops_t led_ops =  {
 static void led0_init(void)
 {
     LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-
     LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_13);
     GPIO_InitStruct.Pin = LL_GPIO_PIN_13;
     GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
@@ -86,6 +85,8 @@ static void led0_init(void)
     led0.inode->type = INODE_TYPE_CHAR;
     led0.inode->ops = led_ops;
     INIT_LIST_HEAD(&led0.inode->node);
+
+    // fs
     struct dentry *den0 = calloc(1, sizeof(*den0));
     snprintf(den0->name, sizeof(den0->name), "%s", "led0");
     den0->type = DENTRY_TYPE_FILE;
@@ -99,7 +100,6 @@ static void led0_init(void)
 static void led1_init(void)
 {
     LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-
     LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_1);
     GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
     GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
@@ -112,6 +112,8 @@ static void led1_init(void)
     led1.inode->type = INODE_TYPE_CHAR;
     led1.inode->ops = led_ops;
     INIT_LIST_HEAD(&led1.inode->node);
+
+    // fs
     struct dentry *den1 = calloc(1, sizeof(*den1));
     snprintf(den1->name, sizeof(den1->name), "%s", "led1");
     den1->type = DENTRY_TYPE_FILE;
