@@ -31,6 +31,13 @@ int _close(int fd)
     return retval;
 }
 
+int ioctl(int fd, unsigned int cmd, unsigned long arg)
+{
+    syscall3(SYS_IOCTL, fd, cmd, arg);
+    register int retval __asm__("r0");
+    return retval;
+}
+
 int _gettimeofday(struct timeval *tp, void *tzp)
 {
     syscall2(SYS_GETTIMEOFDAY, tp, tzp);

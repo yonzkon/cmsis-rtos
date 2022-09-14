@@ -86,10 +86,25 @@ int sys_close(int fd)
     return -1;
 }
 
+int sys_ioctl(int fd, unsigned int cmd, unsigned long arg)
+{
+    struct file *pos;
+    list_for_each_entry(pos, &files, node) {
+        if (pos->fd == fd) {
+            assert(pos->inode->ops.ioctl);
+            return pos->inode->ops.ioctl(pos->inode, cmd, arg);
+        }
+    }
+
+    errno = EBADF;
+    return -1;
+}
+
 void fs_sys_init(void)
 {
     syscall_table[SYS_READ] = sys_read;
     syscall_table[SYS_WRITE] = sys_write;
     syscall_table[SYS_OPEN] = sys_open;
     syscall_table[SYS_CLOSE] = sys_close;
+    syscall_table[SYS_IOCTL] = sys_ioctl;
 }
