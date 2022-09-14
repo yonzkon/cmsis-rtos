@@ -8,6 +8,7 @@
 #include <drivers/i2c.h>
 #include <drivers/uart.h>
 #include <drivers/tim.h>
+#include <drivers/ssd1306.h>
 #include <net/net.h>
 
 extern void board_init(void);
@@ -27,6 +28,7 @@ int main(void)
     i2c_init();
     uart_init();
     tim_init();
+    ssd1306_init();
 
     // w5500
     net_init();

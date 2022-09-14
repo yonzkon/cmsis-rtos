@@ -7,8 +7,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <log.h>
+#include <drivers/ssd1306.h>
 
 static int fd_shell;
+static int fd_oled;
 
 static void cmd_handler(char *cmd)
 {
@@ -25,11 +27,14 @@ static void cmd_handler(char *cmd)
 int shell_init(void)
 {
     fd_shell = open("/dev/ttyS1", 0);
+    fd_oled = open("/dev/ssd1306", 0);
     return 0;
 }
 
 int shell_fini(void)
 {
+    close(fd_shell);
+    close(fd_oled);
     return 0;
 }
 
@@ -41,6 +46,8 @@ void shell_loop(void)
     assert(nread >= 0);
     if (nread == 0) return;
     cmd_handler(cmd);
+    //ioctl(fd_oled, OLED_SET_DC, OLED_DC_DATA);
+    write(fd_oled, cmd, nread);
 }
 
 void shell_main(void)

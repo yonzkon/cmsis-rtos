@@ -3,10 +3,12 @@
 #include "wizchip_conf.h"
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <printk.h>
 #include <unistd.h>
 #include <drivers/spi.h>
+#include <drivers/ssd1306.h>
 
 static void cris_en(void)
 {
@@ -77,33 +79,51 @@ void w5500_set_netinfo(wiz_NetInfo wiz_netinfo)
     ctlnetwork(CN_SET_NETINFO, (void*)&wiz_netinfo);
     LL_mDelay(1000);
     ctlnetwork(CN_GET_NETINFO, (void*)&wiz_netinfo);
-    printk("mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
-           wiz_netinfo.mac[0],
-           wiz_netinfo.mac[1],
-           wiz_netinfo.mac[2],
-           wiz_netinfo.mac[3],
-           wiz_netinfo.mac[4],
-           wiz_netinfo.mac[5]);
-    printk("ip: %d.%d.%d.%d\n",
-           wiz_netinfo.ip[0],
-           wiz_netinfo.ip[1],
-           wiz_netinfo.ip[2],
-           wiz_netinfo.ip[3]);
-    printk("mask: %d.%d.%d.%d\n",
-           wiz_netinfo.sn[0],
-           wiz_netinfo.sn[1],
-           wiz_netinfo.sn[2],
-           wiz_netinfo.sn[3]);
-    printk("gw: %d.%d.%d.%d\n",
-           wiz_netinfo.gw[0],
-           wiz_netinfo.gw[1],
-           wiz_netinfo.gw[2],
-           wiz_netinfo.gw[3]);
-    printk("dns: %d.%d.%d.%d\n",
-           wiz_netinfo.dns[0],
-           wiz_netinfo.dns[1],
-           wiz_netinfo.dns[2],
-           wiz_netinfo.dns[3]);
+
+    char tmp[64] = {0};
+    snprintf(tmp, sizeof(tmp), "mac: %02X:%02X:%02X:%02X:%02X:%02X\n",
+             wiz_netinfo.mac[0],
+             wiz_netinfo.mac[1],
+             wiz_netinfo.mac[2],
+             wiz_netinfo.mac[3],
+             wiz_netinfo.mac[4],
+             wiz_netinfo.mac[5]);
+    printk(tmp);
+    ssd1306_write_str(tmp);
+    ssd1306_next_line();
+    snprintf(tmp, sizeof(tmp), "ip: %d.%d.%d.%d\n",
+             wiz_netinfo.ip[0],
+             wiz_netinfo.ip[1],
+             wiz_netinfo.ip[2],
+             wiz_netinfo.ip[3]);
+    printk(tmp);
+    ssd1306_write_str(tmp);
+    ssd1306_next_line();
+    snprintf(tmp, sizeof(tmp), "mask: %d.%d.%d.%d\n",
+             wiz_netinfo.sn[0],
+             wiz_netinfo.sn[1],
+             wiz_netinfo.sn[2],
+             wiz_netinfo.sn[3]);
+    printk(tmp);
+    ssd1306_write_str(tmp);
+    ssd1306_next_line();
+    snprintf(tmp, sizeof(tmp), "gw: %d.%d.%d.%d\n",
+             wiz_netinfo.gw[0],
+             wiz_netinfo.gw[1],
+             wiz_netinfo.gw[2],
+             wiz_netinfo.gw[3]);
+    printk(tmp);
+    ssd1306_write_str(tmp);
+    ssd1306_next_line();
+    snprintf(tmp, sizeof(tmp), "dns: %d.%d.%d.%d\n",
+             wiz_netinfo.dns[0],
+             wiz_netinfo.dns[1],
+             wiz_netinfo.dns[2],
+             wiz_netinfo.dns[3]);
+    printk(tmp);
+    ssd1306_write_str(tmp);
+    ssd1306_next_line();
+    ssd1306_render();
 }
 
 void net_init(void)
