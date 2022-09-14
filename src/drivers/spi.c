@@ -39,25 +39,25 @@ void SPI1_write_byte(uint8_t byte)
 int SPI1_read(void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        ((uint8_t *)buf)[len] = SPI1_read_write_byte(0x00);
+        ((uint8_t *)buf)[i] = SPI1_read_write_byte(0x00);
     return len;
 }
 
 int SPI1_write(const void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        SPI1_read_write_byte(((uint8_t *)buf)[len]);
+        SPI1_read_write_byte(((uint8_t *)buf)[i]);
     return len;
 }
 
 void SPI2_cs_sel(void)
 {
-    LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_12);
 }
 
 void SPI2_cs_desel(void)
 {
-    LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_12);
 }
 
 static uint8_t SPI2_read_write_byte(uint8_t byte)
@@ -81,14 +81,14 @@ void SPI2_write_byte(uint8_t byte)
 int SPI2_read(void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        ((uint8_t *)buf)[len] = SPI2_read_write_byte(0x00);
+        ((uint8_t *)buf)[i] = SPI2_read_write_byte(0x00);
     return len;
 }
 
 int SPI2_write(const void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        SPI2_read_write_byte(((uint8_t *)buf)[len]);
+        SPI2_read_write_byte(((uint8_t *)buf)[i]);
     return len;
 }
 
