@@ -22,17 +22,17 @@ static void cris_ex(void)
 
 static void cs_sel(void)
 {
-    LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    SPI1_cs_sel();
 }
 
 static void cs_desel(void)
 {
-    LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    SPI1_cs_desel();
 }
 
 static uint8_t spi_rb(void)
 {
-    return SPI1_read_byte(0x00);
+    return SPI1_read_byte();
 }
 
 static void spi_wb(uint8_t TxData)
@@ -42,9 +42,9 @@ static void spi_wb(uint8_t TxData)
 
 static void w5500_reset(void)
 {
-    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_1);
+    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_0);
     LL_mDelay(500);
-    LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_1);
+    LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_0);
     LL_mDelay(1500);
 }
 
