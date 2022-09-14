@@ -1,17 +1,14 @@
 #include "stm32f1xx_ll_gpio.h"
-#include "led.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fs/fs.h>
 
-struct led_struct {
+static struct led_struct {
     struct inode *inode;
     GPIO_TypeDef *gpio;
     int gpio_pin;
-};
-
-struct led_struct led0;
-struct led_struct led1;
+} led0, led1;
 
 static int led_open(struct inode *inode)
 {

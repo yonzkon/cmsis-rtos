@@ -1,6 +1,7 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -112,26 +113,38 @@ static int spi_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
 
 static int spi_write(struct inode *inode, const void *buf, uint32_t len)
 {
+    int rc = 0;
     if (inode == spi1.inode) {
         SPI1_cs_sel();
-        SPI1_write(buf, len);
+        rc = SPI1_write(buf, len);
         SPI1_cs_desel();
+        return rc;
     } else if (inode == spi2.inode) {
         SPI2_cs_sel();
-        SPI2_write(buf, len);
+        rc = SPI2_write(buf, len);
         SPI2_cs_desel();
+        return rc;
     }
-    return 0;
+    errno = ENODEV;
+    return -1;
 }
 
 static int spi_read(struct inode *inode, void *buf, uint32_t len)
 {
+    int rc = 0;
     if (inode == spi1.inode) {
-        return SPI1_read(buf, len);
+        SPI1_cs_sel();
+        rc = SPI1_read(buf, len);
+        SPI1_cs_desel();
+        return rc;
     } else if (inode == spi2.inode) {
-        return SPI2_read(buf, len);
+        SPI2_cs_sel();
+        rc = SPI2_read(buf, len);
+        SPI2_cs_desel();
+        return rc;
     }
-    return 0;
+    errno = ENODEV;
+    return -1;
 }
 
 static inode_ops_t spi_ops =  {

@@ -1,7 +1,7 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_usart.h"
-#include "uart.h"
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,6 +11,52 @@
 
 static struct ringbuf *usart1_rxbuf;
 static struct ringbuf *usart2_rxbuf;
+
+void UART1_write_byte(uint8_t byte)
+{
+    while (!LL_USART_IsActiveFlag_TXE(USART1));
+    LL_USART_TransmitData8(USART1, byte);
+}
+
+int UART1_write(const void *buf, size_t len)
+{
+    for (int i = 0; i < len; i++)
+        UART1_write_byte(((uint8_t *)buf)[i]);
+    return len;
+}
+
+int UART1_read(void *buf, size_t len)
+{
+    NVIC_DisableIRQ(USART1_IRQn);
+    int n = ringbuf_used(usart1_rxbuf);
+    if (n > len) n = len;
+    ringbuf_read(usart1_rxbuf, buf, len);
+    NVIC_EnableIRQ(USART1_IRQn);
+    return n;
+}
+
+void UART2_write_byte(uint8_t byte)
+{
+    while (!LL_USART_IsActiveFlag_TXE(USART2));
+    LL_USART_TransmitData8(USART2, byte);
+}
+
+int UART2_write(const void *buf, size_t len)
+{
+    for (int i = 0; i < len; i++)
+        UART2_write_byte(((uint8_t *)buf)[i]);
+    return len;
+}
+
+int UART2_read(void *buf, size_t len)
+{
+    NVIC_DisableIRQ(USART2_IRQn);
+    int n = ringbuf_used(usart2_rxbuf);
+    if (n > len) n = len;
+    ringbuf_read(usart2_rxbuf, buf, len);
+    NVIC_EnableIRQ(USART2_IRQn);
+    return n;
+}
 
 void USART1_IRQHandler(void)
 {
@@ -24,12 +70,9 @@ void USART2_IRQHandler(void)
         ringbuf_write_byte(usart2_rxbuf, USART2->DR & USART_DR_DR);
 }
 
-struct uart_struct {
+static struct uart_struct {
     struct inode *inode;
-};
-
-static struct uart_struct uart1;
-static struct uart_struct uart2;
+} uart1, uart2;
 
 static int uart_open(struct inode *inode)
 {
@@ -53,7 +96,7 @@ static int uart_write(struct inode *inode, const void *buf, uint32_t len)
     } else if (inode == uart2.inode) {
         return UART2_write(buf, len);
     }
-
+    errno = ENODEV;
     return -1;
 }
 
@@ -63,9 +106,8 @@ static int uart_read(struct inode *inode, void *buf, uint32_t len)
         return UART1_read(buf, len);
     } else if (inode == uart2.inode) {
         return UART2_read(buf, len);
-        NVIC_DisableIRQ(USART2_IRQn);
     }
-
+    errno = ENODEV;
     return -1;
 }
 
@@ -193,50 +235,4 @@ void uart_init(void)
 {
     USART1_init();
     USART2_init();
-}
-
-void UART1_write_byte(uint8_t byte)
-{
-    while (!LL_USART_IsActiveFlag_TXE(USART1));
-    LL_USART_TransmitData8(USART1, byte);
-}
-
-int UART1_write(const void *buf, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        UART1_write_byte(((uint8_t *)buf)[i]);
-    return len;
-}
-
-int UART1_read(void *buf, size_t len)
-{
-    NVIC_DisableIRQ(USART1_IRQn);
-    int n = ringbuf_used(usart1_rxbuf);
-    if (n > len) n = len;
-    ringbuf_read(usart1_rxbuf, buf, len);
-    NVIC_EnableIRQ(USART1_IRQn);
-    return n;
-}
-
-void UART2_write_byte(uint8_t byte)
-{
-    while (!LL_USART_IsActiveFlag_TXE(USART2));
-    LL_USART_TransmitData8(USART2, byte);
-}
-
-int UART2_write(const void *buf, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        UART2_write_byte(((uint8_t *)buf)[i]);
-    return len;
-}
-
-int UART2_read(void *buf, size_t len)
-{
-    NVIC_DisableIRQ(USART2_IRQn);
-    int n = ringbuf_used(usart2_rxbuf);
-    if (n > len) n = len;
-    ringbuf_read(usart2_rxbuf, buf, len);
-    NVIC_EnableIRQ(USART2_IRQn);
-    return n;
 }

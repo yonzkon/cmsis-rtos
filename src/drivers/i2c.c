@@ -1,16 +1,87 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_i2c.h"
+#include "i2c.h"
+#include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <printk.h>
 #include <fs/fs.h>
 
-struct i2c_struct {
-    struct inode *inode;
-};
+void I2C1_write_byte(uint8_t dev, uint8_t addr, uint8_t byte)
+{
+    while (LL_I2C_IsActiveFlag_BUSY(I2C1));
 
-static struct i2c_struct i2c1;
+    //I2C1->CR1 |= I2C_CR1_START;
+    LL_I2C_GenerateStartCondition(I2C1);
+    while (!LL_I2C_IsActiveFlag_SB(I2C1));
+
+    LL_I2C_TransmitData8(I2C1, dev << 1);
+    while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
+    LL_I2C_ClearFlag_ADDR(I2C1);
+
+    //I2C1->DR = 0x10;
+    LL_I2C_TransmitData8(I2C1, addr);
+    while (!LL_I2C_IsActiveFlag_TXE(I2C1));
+
+    //I2C1->DR = 0xcc;
+    LL_I2C_TransmitData8(I2C1, byte);
+    while (!LL_I2C_IsActiveFlag_BTF(I2C1));
+
+    I2C1->CR1 |= I2C_CR1_STOP;
+}
+
+uint8_t I2C1_read_byte(uint8_t dev, uint8_t addr)
+{
+    while(LL_I2C_IsActiveFlag_BUSY(I2C1));
+
+    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
+    LL_I2C_GenerateStartCondition(I2C1);
+    while(!LL_I2C_IsActiveFlag_SB(I2C1));
+
+    LL_I2C_TransmitData8(I2C1, dev);
+    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
+    LL_I2C_ClearFlag_ADDR(I2C1);
+
+    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
+    LL_I2C_TransmitData8(I2C1, addr);
+    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
+
+    LL_I2C_GenerateStopCondition(I2C1);
+    LL_I2C_GenerateStartCondition(I2C1);
+    while(!LL_I2C_IsActiveFlag_SB(I2C1));
+
+    LL_I2C_TransmitData8(I2C1, dev | 0x01);
+    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
+
+    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
+    LL_I2C_ClearFlag_ADDR(I2C1);
+    LL_I2C_GenerateStopCondition(I2C1);
+
+    while(!LL_I2C_IsActiveFlag_RXNE(I2C1));
+    return LL_I2C_ReceiveData8(I2C1);
+}
+
+int I2C1_write(uint8_t dev, uint8_t addr, const void *buf, uint32_t len)
+{
+    for (int i = 0; i < len; i++)
+        I2C1_write_byte(dev, addr, ((uint8_t *)buf)[len]);
+    return len;
+}
+
+int I2C1_read(uint8_t dev, uint8_t addr, void *buf, uint32_t len)
+{
+    for (int i = 0; i < len; i++)
+        ((uint8_t *)buf)[len] = I2C1_read_byte(dev, addr);
+    return len;
+}
+
+static struct i2c_struct {
+    struct inode *inode;
+    uint8_t dev;
+    uint8_t addr;
+} i2c1;
 
 static int i2c_open(struct inode *inode)
 {
@@ -24,17 +95,41 @@ static int i2c_close(struct inode *inode)
 
 static int i2c_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
 {
-    return 0;
+    if (cmd == I2C_SET_DEV) {
+        if (inode == i2c1.inode) {
+            i2c1.dev = arg;
+            return 0;
+        } else {
+            errno =  ENODEV;
+            return -1;
+        }
+    } else if (cmd == I2C_SET_ADDR) {
+        if (inode == i2c1.inode) {
+            i2c1.addr = arg;
+            return 0;
+        } else {
+            errno =  ENODEV;
+            return -1;
+        }
+    }
+    errno = EINVAL;
+    return -1;
 }
 
 static int i2c_write(struct inode *inode, const void *buf, uint32_t len)
 {
-    return 0;
+    if (inode == i2c1.inode)
+        return I2C1_write(i2c1.dev, i2c1.addr, buf, len);
+    errno = ENODEV;
+    return -1;
 }
 
 static int i2c_read(struct inode *inode, void *buf, uint32_t len)
 {
-    return 0;
+    if (inode == i2c1.inode)
+        return I2C1_read(i2c1.dev, i2c1.addr, buf, len);
+    errno = ENODEV;
+    return -1;
 }
 
 static inode_ops_t i2c_ops =  {
@@ -97,58 +192,4 @@ static void I2C1_init(void)
 void i2c_init(void)
 {
     I2C1_init();
-}
-
-void I2C1_write_byte(uint8_t dev, uint8_t addr, uint8_t byte)
-{
-    while (LL_I2C_IsActiveFlag_BUSY(I2C1));
-
-    //I2C1->CR1 |= I2C_CR1_START;
-    LL_I2C_GenerateStartCondition(I2C1);
-    while (!LL_I2C_IsActiveFlag_SB(I2C1));
-
-    LL_I2C_TransmitData8(I2C1, dev << 1);
-    while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
-    LL_I2C_ClearFlag_ADDR(I2C1);
-
-    //I2C1->DR = 0x10;
-    LL_I2C_TransmitData8(I2C1, addr);
-    while (!LL_I2C_IsActiveFlag_TXE(I2C1));
-
-    //I2C1->DR = 0xcc;
-    LL_I2C_TransmitData8(I2C1, byte);
-    while (!LL_I2C_IsActiveFlag_BTF(I2C1));
-
-    I2C1->CR1 |= I2C_CR1_STOP;
-}
-
-uint8_t I2C1_read_byte(uint8_t dev, uint8_t addr)
-{
-    while(LL_I2C_IsActiveFlag_BUSY(I2C1));
-
-    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
-    LL_I2C_GenerateStartCondition(I2C1);
-    while(!LL_I2C_IsActiveFlag_SB(I2C1));
-
-    LL_I2C_TransmitData8(I2C1, dev);
-    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
-    LL_I2C_ClearFlag_ADDR(I2C1);
-
-    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
-    LL_I2C_TransmitData8(I2C1, addr);
-    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
-
-    LL_I2C_GenerateStopCondition(I2C1);
-    LL_I2C_GenerateStartCondition(I2C1);
-    while(!LL_I2C_IsActiveFlag_SB(I2C1));
-
-    LL_I2C_TransmitData8(I2C1, dev | 0x01);
-    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
-
-    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
-    LL_I2C_ClearFlag_ADDR(I2C1);
-    LL_I2C_GenerateStopCondition(I2C1);
-
-    while(!LL_I2C_IsActiveFlag_RXNE(I2C1));
-    return LL_I2C_ReceiveData8(I2C1);
 }

@@ -1,16 +1,15 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_tim.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fs/fs.h>
 
 uint64_t tim1_tick_ms;
 
-struct tim_struct {
+static struct tim_struct {
     struct inode *inode;
-};
-
-static struct tim_struct tim1;
+} tim1;
 
 static int tim_open(struct inode *inode)
 {
