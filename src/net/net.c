@@ -24,22 +24,22 @@ static void cris_ex(void)
 
 static void cs_sel(void)
 {
-    SPI1_cs_sel();
+    SPI_cs_sel(SPI1);
 }
 
 static void cs_desel(void)
 {
-    SPI1_cs_desel();
+    SPI_cs_desel(SPI1);
 }
 
 static uint8_t spi_rb(void)
 {
-    return SPI1_read_byte();
+    return SPI_read_byte(SPI1);
 }
 
 static void spi_wb(uint8_t TxData)
 {
-    SPI1_write_byte(TxData);
+    SPI_write_byte(SPI1, TxData);
 }
 
 static void w5500_reset(void)

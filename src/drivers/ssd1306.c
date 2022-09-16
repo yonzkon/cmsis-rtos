@@ -17,7 +17,7 @@ static uint16_t currentY;
 
 static void ssd1306_reset(void)
 {
-    SPI2_cs_desel();
+    SPI_cs_desel(SPI2);
     LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_2);
     LL_mDelay(500);
     LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_2);
@@ -37,18 +37,18 @@ static void ssd1306_dc_desel(void)
 static void ssd1306_write_cmd(uint8_t cmd)
 {
     ssd1306_dc_sel();
-    SPI2_cs_sel();
-    SPI2_write_byte(cmd);
-    SPI2_cs_desel();
+    SPI_cs_sel(SPI2);
+    SPI_write_byte(SPI2, cmd);
+    SPI_cs_desel(SPI2);
     ssd1306_dc_desel();
 }
 
 static int ssd1306_write_data(const void *buf, uint32_t len)
 {
     ssd1306_dc_desel();
-    SPI2_cs_sel();
-    int rc = SPI2_write(buf, len);
-    SPI2_cs_desel();
+    SPI_cs_sel(SPI2);
+    int rc = SPI_write(SPI2, buf, len);
+    SPI_cs_desel(SPI2);
     return rc;
 }
 
@@ -188,65 +188,54 @@ int ssd1306_write_str(const char *str)
     return len;
 }
 
-static struct ssd1306_struct {
+static struct ssd1306_device {
     struct inode *inode;
+    struct dentry *dentry;
 } ssd1306;
 
-static int ssd1306_open(struct inode *inode)
+static int ssd1306_open(struct file *file)
+{
+    file->private_data = &ssd1306;
+    return 0;
+}
+
+static int ssd1306_close(struct file *file)
 {
     return 0;
 }
 
-static int ssd1306_close(struct inode *inode)
-{
-    return 0;
-}
-
-static int ssd1306_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+static int ssd1306_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     if (cmd == SSD1306_IOCTL_WRITE_CMD) {
-        if (inode == ssd1306.inode) {
-            ssd1306_write_cmd(arg);
-            return 0;
-        } else {
-            errno = ENODEV;
-            return -1;
-        }
+        ssd1306_write_cmd(arg);
+        return 0;
     }
 
     errno = EINVAL;
     return -1;
 }
 
-static int ssd1306_write(struct inode *inode, const void *buf, uint32_t len)
+static int ssd1306_write(struct file *file, const void *buf, uint32_t len)
 {
     int rc = 0;
-    if (inode == ssd1306.inode) {
-        ssd1306_dc_desel();
-        SPI2_cs_sel();
-        rc = SPI2_write(buf, len);
-        SPI2_cs_desel();
-        return rc;
-    }
-    errno = ENODEV;
-    return -1;
+    ssd1306_dc_desel();
+    SPI_cs_sel(SPI2);
+    rc = SPI_write(SPI2, buf, len);
+    SPI_cs_desel(SPI2);
+    return rc;
 }
 
-static int ssd1306_read(struct inode *inode, void *buf, uint32_t len)
+static int ssd1306_read(struct file *file, void *buf, uint32_t len)
 {
     int rc = 0;
-    if (inode == ssd1306.inode) {
-        ssd1306_dc_desel();
-        SPI2_cs_sel();
-        rc = SPI2_read(buf, len);
-        SPI2_cs_desel();
-        return rc;
-    }
-    errno = ENODEV;
-    return -1;
+    ssd1306_dc_desel();
+    SPI_cs_sel(SPI2);
+    rc = SPI_read(SPI2, buf, len);
+    SPI_cs_desel(SPI2);
+    return rc;
 }
 
-static inode_ops_t ssd1306_ops =  {
+static struct file_operations ssd1306_fops =  {
     .open = ssd1306_open,
     .close = ssd1306_close,
     .ioctl = ssd1306_ioctl,
@@ -263,16 +252,20 @@ void ssd1306_init(void)
     ssd1306_render();
 
     // fs
-    ssd1306.inode = calloc(1, sizeof(*ssd1306.inode));
-    ssd1306.inode->type = INODE_TYPE_CHAR;
-    ssd1306.inode->ops = ssd1306_ops;
-    INIT_LIST_HEAD(&ssd1306.inode->node);
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "ssd1306");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = ssd1306.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = ssd1306_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "ssd1306");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // ssd1306_device
+    ssd1306.inode = inode;
+    ssd1306.dentry = den;
 }

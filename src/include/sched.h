@@ -9,6 +9,8 @@
 #define TASK_UNINTERRUPTIBLE 2
 #define TASK_STOPPED         3
 
+#define TASK_FILES 8
+
 struct task_struct {
     uint32_t r[13];
     uint8_t *sp;
@@ -25,7 +27,7 @@ struct task_struct {
     uint8_t state;
     uint64_t timeout_ms;
 
-    struct file *files[8];
+    struct file *files[TASK_FILES];
     struct list_head node;
 };
 

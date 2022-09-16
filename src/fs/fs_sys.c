@@ -3,20 +3,20 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sched.h>
 #include <fs/fs.h>
 #include <syscall/syscall.h>
 #include <list.h>
 
 static LIST_HEAD(files);
-static char fd_state[64];
 
 int sys_read(int fd, char *buf, int len)
 {
-    struct file *pos;
-    list_for_each_entry(pos, &files, node) {
-        if (pos->fd == fd) {
-            assert(pos->inode->ops.read);
-            return pos->inode->ops.read(pos->inode, buf, len);
+    for (int i = 1; i < TASK_FILES; i++) {
+        struct file *fp = current->files[i];
+        if (fp->fd == fd) {
+            assert(fp->f_ops.read);
+            return fp->f_ops.read(fp, buf, len);
         }
     }
 
@@ -26,11 +26,11 @@ int sys_read(int fd, char *buf, int len)
 
 int sys_write(int fd, char *buf, int len)
 {
-    struct file *pos;
-    list_for_each_entry(pos, &files, node) {
-        if (pos->fd == fd) {
-            assert(pos->inode->ops.write);
-            return pos->inode->ops.write(pos->inode, buf, len);
+    for (int i = 1; i < TASK_FILES; i++) {
+        struct file *fp = current->files[i];
+        if (fp->fd == fd) {
+            assert(fp->f_ops.write);
+            return fp->f_ops.write(fp, buf, len);
         }
     }
 
@@ -42,24 +42,25 @@ int sys_open(const char *pathname, int flags)
 {
     struct dentry *den = dentry_walk(pathname);
     if (den) {
-        struct file *pos;
-        list_for_each_entry(pos, &files, node) {
-            if (pos->dentry == den) {
-                errno = EBUSY;
+        for (int i = 1; i < TASK_FILES; i++) {
+            if (current->files[i]->dentry == den) {
+                errno = EEXIST;
                 return -1;
             }
         }
-        for (int i = 1; i < 64; i++) {
-            if (fd_state[i] == 0) {
-                pos = calloc(1, sizeof(*pos));
-                fd_state[i] = 1;
-                pos->fd = i;
-                pos->dentry = den;
-                pos->inode = den->inode;
-                if (den->inode->ops.open)
-                    den->inode->ops.open(den->inode);
-                INIT_LIST_HEAD(&pos->node);
-                list_add(&pos->node, &files);
+
+        for (int i = 1; i < TASK_FILES; i++) {
+            if (current->files[i] == NULL) {
+                struct file *fp = calloc(1, sizeof(*fp));
+                fp->fd = i;
+                fp->dentry = den;
+                fp->f_ops = den->inode->f_ops;
+                INIT_LIST_HEAD(&fp->node);
+                list_add(&fp->node, &files);
+                fp->private_data = NULL;
+                assert(fp->f_ops.open);
+                fp->f_ops.open(fp);
+                current->files[i] = fp;
                 return i;
             }
         }
@@ -71,13 +72,14 @@ int sys_open(const char *pathname, int flags)
 
 int sys_close(int fd)
 {
-    struct file *pos;
-    list_for_each_entry(pos, &files, node) {
-        if (pos->fd == fd) {
-            list_del(&pos->node);
-            free(pos);
-            assert(fd_state[fd] == 1);
-            fd_state[fd] = 0;
+    for (int i = 1; i < TASK_FILES; i++) {
+        struct file *fp = current->files[i];
+        if (fp->fd == fd) {
+            assert(fp->f_ops.close);
+            fp->f_ops.close(fp);
+            list_del(&fp->node);
+            free(fp);
+            current->files[i] = NULL;
             return 0;
         }
     }
@@ -88,11 +90,11 @@ int sys_close(int fd)
 
 int sys_ioctl(int fd, unsigned int cmd, unsigned long arg)
 {
-    struct file *pos;
-    list_for_each_entry(pos, &files, node) {
-        if (pos->fd == fd) {
-            assert(pos->inode->ops.ioctl);
-            return pos->inode->ops.ioctl(pos->inode, cmd, arg);
+    for (int i = 1; i < TASK_FILES; i++) {
+        struct file *fp = current->files[i];
+        if (fp->fd == fd) {
+            assert(fp->f_ops.ioctl);
+            return fp->f_ops.ioctl(fp, cmd, arg);
         }
     }
 

@@ -1,117 +1,95 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_usart.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <printk.h>
 #include <ringbuf.h>
 #include <fs/fs.h>
 
-static struct ringbuf *usart1_rxbuf;
-static struct ringbuf *usart2_rxbuf;
+struct uart_device {
+    struct inode *inode;
+    struct dentry *dentry;
+    struct ringbuf *rxbuf;
+    USART_TypeDef *usart;
+    uint8_t irq;
+} uart_dev1, uart_dev2;
 
-void UART1_write_byte(uint8_t byte)
+void __uart_write_byte(struct uart_device *device, uint8_t byte)
 {
-    while (!LL_USART_IsActiveFlag_TXE(USART1));
-    LL_USART_TransmitData8(USART1, byte);
+    while (!LL_USART_IsActiveFlag_TXE(device->usart));
+    LL_USART_TransmitData8(device->usart, byte);
 }
 
-int UART1_write(const void *buf, size_t len)
+int __uart_write(struct uart_device *device, const void *buf, size_t len)
 {
     for (int i = 0; i < len; i++)
-        UART1_write_byte(((uint8_t *)buf)[i]);
+        __uart_write_byte(device, ((uint8_t *)buf)[i]);
     return len;
 }
 
-int UART1_read(void *buf, size_t len)
+int __uart_read(struct uart_device *device, void *buf, size_t len)
 {
-    NVIC_DisableIRQ(USART1_IRQn);
-    int n = ringbuf_used(usart1_rxbuf);
+    NVIC_DisableIRQ(device->irq);
+    int n = ringbuf_used(device->rxbuf);
     if (n > len) n = len;
-    ringbuf_read(usart1_rxbuf, buf, len);
-    NVIC_EnableIRQ(USART1_IRQn);
-    return n;
-}
-
-void UART2_write_byte(uint8_t byte)
-{
-    while (!LL_USART_IsActiveFlag_TXE(USART2));
-    LL_USART_TransmitData8(USART2, byte);
-}
-
-int UART2_write(const void *buf, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        UART2_write_byte(((uint8_t *)buf)[i]);
-    return len;
-}
-
-int UART2_read(void *buf, size_t len)
-{
-    NVIC_DisableIRQ(USART2_IRQn);
-    int n = ringbuf_used(usart2_rxbuf);
-    if (n > len) n = len;
-    ringbuf_read(usart2_rxbuf, buf, len);
-    NVIC_EnableIRQ(USART2_IRQn);
+    ringbuf_read(device->rxbuf, buf, len);
+    NVIC_EnableIRQ(device->irq);
     return n;
 }
 
 void USART1_IRQHandler(void)
 {
     if (LL_USART_IsActiveFlag_RXNE(USART1))
-        ringbuf_write_byte(usart1_rxbuf, USART1->DR & USART_DR_DR);
+        ringbuf_write_byte(uart_dev1.rxbuf, USART1->DR & USART_DR_DR);
 }
 
 void USART2_IRQHandler(void)
 {
     if (LL_USART_IsActiveFlag_RXNE(USART2))
-        ringbuf_write_byte(usart2_rxbuf, USART2->DR & USART_DR_DR);
+        ringbuf_write_byte(uart_dev2.rxbuf, USART2->DR & USART_DR_DR);
 }
 
-static struct uart_struct {
-    struct inode *inode;
-} uart1, uart2;
-
-static int uart_open(struct inode *inode)
+static int uart_open(struct file *file)
 {
-    return 0;
-}
-
-static int uart_close(struct inode *inode)
-{
-    return 0;
-}
-
-static int uart_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
-{
-    return 0;
-}
-
-static int uart_write(struct inode *inode, const void *buf, uint32_t len)
-{
-    if (inode == uart1.inode) {
-        return UART1_write(buf, len);
-    } else if (inode == uart2.inode) {
-        return UART2_write(buf, len);
+    if (strcmp(file->dentry->name, "ttyS1") == 0) {
+        file->private_data = &uart_dev1;
+    } else if (strcmp(file->dentry->name, "ttyS2") == 0) {
+        file->private_data = &uart_dev2;
+    } else {
+        assert(0);
     }
-    errno = ENODEV;
-    return -1;
+
+    return 0;
 }
 
-static int uart_read(struct inode *inode, void *buf, uint32_t len)
+static int uart_close(struct file *file)
 {
-    if (inode == uart1.inode) {
-        return UART1_read(buf, len);
-    } else if (inode == uart2.inode) {
-        return UART2_read(buf, len);
-    }
-    errno = ENODEV;
-    return -1;
+    return 0;
 }
 
-static inode_ops_t uart_ops =  {
+static int uart_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    return 0;
+}
+
+static int uart_write(struct file *file, const void *buf, uint32_t len)
+{
+    struct uart_device *device = file->private_data;
+    return __uart_write(device, buf, len);
+}
+
+static int uart_read(struct file *file, void *buf, uint32_t len)
+{
+    struct uart_device *device = file->private_data;
+    return __uart_read(device, buf, len);
+}
+
+static struct file_operations uart_fops =  {
     .open = uart_open,
     .close = uart_close,
     .ioctl = uart_ioctl,
@@ -156,23 +134,27 @@ static void USART1_init(void)
     LL_USART_ConfigAsyncMode(USART1);
     LL_USART_Enable(USART1);
 
-    // buffer init
-    usart1_rxbuf = ringbuf_new(1024);
-    LL_USART_EnableIT_RXNE(USART1);
-
     // fs init
-    uart1.inode = calloc(1, sizeof(*uart1.inode));
-    uart1.inode->type = INODE_TYPE_CHAR;
-    uart1.inode->ops = uart_ops;
-    INIT_LIST_HEAD(&uart1.inode->node);
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "ttyS1");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = uart1.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = uart_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "ttyS1");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // uart_dev1
+    uart_dev1.inode = inode;
+    uart_dev1.dentry = den;
+    uart_dev1.rxbuf = ringbuf_new(1024);
+    uart_dev1.usart = USART1;
+    uart_dev1.irq = USART1_IRQn;
+    LL_USART_EnableIT_RXNE(USART1);
 }
 
 static void USART2_init(void)
@@ -212,23 +194,27 @@ static void USART2_init(void)
     LL_USART_ConfigAsyncMode(USART2);
     LL_USART_Enable(USART2);
 
-    // buffer init
-    usart2_rxbuf = ringbuf_new(1024);
-    LL_USART_EnableIT_RXNE(USART2);
-
     // fs init
-    uart2.inode = calloc(1, sizeof(*uart2.inode));
-    uart2.inode->type = INODE_TYPE_CHAR;
-    uart2.inode->ops = uart_ops;
-    INIT_LIST_HEAD(&uart2.inode->node);
-    struct dentry *den2 = calloc(1, sizeof(*den2));
-    snprintf(den2->name, sizeof(den2->name), "%s", "ttyS2");
-    den2->type = DENTRY_TYPE_FILE;
-    den2->parent = NULL;
-    INIT_LIST_HEAD(&den2->childs);
-    INIT_LIST_HEAD(&den2->child_node);
-    den2->inode = uart2.inode;
-    dentry_add("/dev", den2);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = uart_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "ttyS2");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // uart_dev2
+    uart_dev2.inode = inode;
+    uart_dev2.dentry = den;
+    uart_dev2.rxbuf = ringbuf_new(1024);
+    uart_dev2.usart = USART2;
+    uart_dev2.irq = USART2_IRQn;
+    LL_USART_EnableIT_RXNE(USART2);
 }
 
 void uart_init(void)

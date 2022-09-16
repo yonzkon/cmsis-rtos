@@ -4,13 +4,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
-void UART1_write_byte(uint8_t byte);
-int UART1_write(const void *buf, size_t len);
-int UART1_read(void *buf, size_t len);
+struct uart_device;
+extern struct uart_device uart_dev1, uart_dev2;
 
-void UART2_write_byte(uint8_t byte);
-int UART2_write(const void *buf, size_t len);
-int UART2_read(void *buf, size_t len);
+void __uart_write_byte(struct uart_device *device, uint8_t byte);
+int __uart_write(struct uart_device *device, const void *buf, size_t len);
+int __uart_read(struct uart_device *device, void *buf, size_t len);
 
 void uart_init(void);
 

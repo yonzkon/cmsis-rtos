@@ -2,137 +2,134 @@
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_i2c.h"
 #include "i2c.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <printk.h>
 #include <fs/fs.h>
 
-void I2C1_write_byte(uint8_t dev, uint8_t addr, uint8_t byte)
+void I2C_write_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, uint8_t byte)
 {
-    while (LL_I2C_IsActiveFlag_BUSY(I2C1));
+    while (LL_I2C_IsActiveFlag_BUSY(I2Cx));
 
-    //I2C1->CR1 |= I2C_CR1_START;
-    LL_I2C_GenerateStartCondition(I2C1);
-    while (!LL_I2C_IsActiveFlag_SB(I2C1));
+    //I2Cx->CR1 |= I2C_CR1_START;
+    LL_I2C_GenerateStartCondition(I2Cx);
+    while (!LL_I2C_IsActiveFlag_SB(I2Cx));
 
-    LL_I2C_TransmitData8(I2C1, dev << 1);
-    while (!LL_I2C_IsActiveFlag_ADDR(I2C1));
-    LL_I2C_ClearFlag_ADDR(I2C1);
+    LL_I2C_TransmitData8(I2Cx, dev << 1);
+    while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+    LL_I2C_ClearFlag_ADDR(I2Cx);
 
-    //I2C1->DR = 0x10;
-    LL_I2C_TransmitData8(I2C1, addr);
-    while (!LL_I2C_IsActiveFlag_TXE(I2C1));
+    //I2Cx->DR = 0x10;
+    LL_I2C_TransmitData8(I2Cx, addr);
+    while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
 
-    //I2C1->DR = 0xcc;
-    LL_I2C_TransmitData8(I2C1, byte);
-    while (!LL_I2C_IsActiveFlag_BTF(I2C1));
+    //I2Cx->DR = 0xcc;
+    LL_I2C_TransmitData8(I2Cx, byte);
+    while (!LL_I2C_IsActiveFlag_BTF(I2Cx));
 
-    I2C1->CR1 |= I2C_CR1_STOP;
+    I2Cx->CR1 |= I2C_CR1_STOP;
 }
 
-uint8_t I2C1_read_byte(uint8_t dev, uint8_t addr)
+uint8_t I2C_read_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr)
 {
-    while(LL_I2C_IsActiveFlag_BUSY(I2C1));
+    while(LL_I2C_IsActiveFlag_BUSY(I2Cx));
 
-    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_ACK);
-    LL_I2C_GenerateStartCondition(I2C1);
-    while(!LL_I2C_IsActiveFlag_SB(I2C1));
+    LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_ACK);
+    LL_I2C_GenerateStartCondition(I2Cx);
+    while(!LL_I2C_IsActiveFlag_SB(I2Cx));
 
-    LL_I2C_TransmitData8(I2C1, dev);
-    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
-    LL_I2C_ClearFlag_ADDR(I2C1);
+    LL_I2C_TransmitData8(I2Cx, dev);
+    while(!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+    LL_I2C_ClearFlag_ADDR(I2Cx);
 
-    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
-    LL_I2C_TransmitData8(I2C1, addr);
-    while(!LL_I2C_IsActiveFlag_TXE(I2C1));
+    while(!LL_I2C_IsActiveFlag_TXE(I2Cx));
+    LL_I2C_TransmitData8(I2Cx, addr);
+    while(!LL_I2C_IsActiveFlag_TXE(I2Cx));
 
-    LL_I2C_GenerateStopCondition(I2C1);
-    LL_I2C_GenerateStartCondition(I2C1);
-    while(!LL_I2C_IsActiveFlag_SB(I2C1));
+    LL_I2C_GenerateStopCondition(I2Cx);
+    LL_I2C_GenerateStartCondition(I2Cx);
+    while(!LL_I2C_IsActiveFlag_SB(I2Cx));
 
-    LL_I2C_TransmitData8(I2C1, dev | 0x01);
-    while(!LL_I2C_IsActiveFlag_ADDR(I2C1));
+    LL_I2C_TransmitData8(I2Cx, dev | 0x01);
+    while(!LL_I2C_IsActiveFlag_ADDR(I2Cx));
 
-    LL_I2C_AcknowledgeNextData(I2C1, LL_I2C_NACK);
-    LL_I2C_ClearFlag_ADDR(I2C1);
-    LL_I2C_GenerateStopCondition(I2C1);
+    LL_I2C_AcknowledgeNextData(I2Cx, LL_I2C_NACK);
+    LL_I2C_ClearFlag_ADDR(I2Cx);
+    LL_I2C_GenerateStopCondition(I2Cx);
 
-    while(!LL_I2C_IsActiveFlag_RXNE(I2C1));
-    return LL_I2C_ReceiveData8(I2C1);
+    while(!LL_I2C_IsActiveFlag_RXNE(I2Cx));
+    return LL_I2C_ReceiveData8(I2Cx);
 }
 
-int I2C1_write(uint8_t dev, uint8_t addr, const void *buf, uint32_t len)
+int I2C_write(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, const void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        I2C1_write_byte(dev, addr, ((uint8_t *)buf)[len]);
+        I2C_write_byte(I2Cx, dev, addr, ((uint8_t *)buf)[len]);
     return len;
 }
 
-int I2C1_read(uint8_t dev, uint8_t addr, void *buf, uint32_t len)
+int I2C_read(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        ((uint8_t *)buf)[len] = I2C1_read_byte(dev, addr);
+        ((uint8_t *)buf)[len] = I2C_read_byte(I2Cx, dev, addr);
     return len;
 }
 
-static struct i2c_struct {
+static struct i2c_device {
     struct inode *inode;
+    struct dentry *dentry;
+    I2C_TypeDef *i2c;
     uint8_t dev;
     uint8_t addr;
-} i2c1;
+} i2c_dev1;
 
-static int i2c_open(struct inode *inode)
+static int i2c_open(struct file *file)
+{
+    if (strcmp(file->dentry->name, "i2c1") == 0) {
+        file->private_data = &i2c_dev1;
+    } else {
+        assert(0);
+    }
+    return 0;
+}
+
+static int i2c_close(struct file *file)
 {
     return 0;
 }
 
-static int i2c_close(struct inode *inode)
+static int i2c_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-    return 0;
-}
+    struct i2c_device *device = file->private_data;
 
-static int i2c_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
-{
     if (cmd == I2C_SET_DEV) {
-        if (inode == i2c1.inode) {
-            i2c1.dev = arg;
-            return 0;
-        } else {
-            errno =  ENODEV;
-            return -1;
-        }
+        device->dev = arg;
+        return 0;
     } else if (cmd == I2C_SET_ADDR) {
-        if (inode == i2c1.inode) {
-            i2c1.addr = arg;
-            return 0;
-        } else {
-            errno =  ENODEV;
-            return -1;
-        }
+        device->addr = arg;
+        return 0;
     }
     errno = EINVAL;
     return -1;
 }
 
-static int i2c_write(struct inode *inode, const void *buf, uint32_t len)
+static int i2c_write(struct file *file, const void *buf, uint32_t len)
 {
-    if (inode == i2c1.inode)
-        return I2C1_write(i2c1.dev, i2c1.addr, buf, len);
-    errno = ENODEV;
-    return -1;
+    struct i2c_device *device = file->private_data;
+    return I2C_write(device->i2c, device->dev, device->addr, buf, len);
 }
 
-static int i2c_read(struct inode *inode, void *buf, uint32_t len)
+static int i2c_read(struct file *file, void *buf, uint32_t len)
 {
-    if (inode == i2c1.inode)
-        return I2C1_read(i2c1.dev, i2c1.addr, buf, len);
-    errno = ENODEV;
-    return -1;
+    struct i2c_device *device = file->private_data;
+    return I2C_read(device->i2c, device->dev, device->addr, buf, len);
 }
 
-static inode_ops_t i2c_ops =  {
+static struct file_operations i2c_fops =  {
     .open = i2c_open,
     .close = i2c_close,
     .ioctl = i2c_ioctl,
@@ -175,18 +172,23 @@ static void I2C1_init(void)
     LL_I2C_Enable(I2C1);
 
     // fs init
-    i2c1.inode = calloc(1, sizeof(*i2c1.inode));
-    i2c1.inode->type = INODE_TYPE_CHAR;
-    i2c1.inode->ops = i2c_ops;
-    INIT_LIST_HEAD(&i2c1.inode->node);
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "i2c1");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = i2c1.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = i2c_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "i2c1");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // i2c_dev1
+    i2c_dev1.inode = inode;
+    i2c_dev1.dentry = den;
+    i2c_dev1.i2c = I2C1;
 }
 
 void i2c_init(void)

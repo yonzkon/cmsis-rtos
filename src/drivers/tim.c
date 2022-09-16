@@ -7,36 +7,37 @@
 
 uint64_t tim1_tick_ms;
 
-static struct tim_struct {
+static struct tim_device {
     struct inode *inode;
-} tim1;
+    struct dentry *dentry;
+} tim1_dev;
 
-static int tim_open(struct inode *inode)
+static int tim_open(struct file *file)
 {
     return 0;
 }
 
-static int tim_close(struct inode *inode)
+static int tim_close(struct file *file)
 {
     return 0;
 }
 
-static int tim_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+static int tim_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int tim_write(struct inode *inode, const void *buf, uint32_t len)
+static int tim_write(struct file *file, const void *buf, uint32_t len)
 {
     return 0;
 }
 
-static int tim_read(struct inode *inode, void *buf, uint32_t len)
+static int tim_read(struct file *file, void *buf, uint32_t len)
 {
     return snprintf(buf, len, "%llu", tim1_tick_ms);
 }
 
-static inode_ops_t tim_ops =  {
+static struct file_operations tim_fops =  {
     .open = tim_open,
     .close = tim_close,
     .ioctl = tim_ioctl,
@@ -73,18 +74,22 @@ static void TIM1_init(void)
     NVIC_EnableIRQ(TIM1_UP_IRQn);
 
     // fs
-    tim1.inode = calloc(1, sizeof(*tim1.inode));
-    tim1.inode->type = INODE_TYPE_CHAR;
-    tim1.inode->ops = tim_ops;
-    INIT_LIST_HEAD(&tim1.inode->node);
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "tim1");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = tim1.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = tim_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "tim1");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // tim1_device
+    tim1_dev.inode = inode;
+    tim1_dev.dentry = den;
 }
 
 void tim_init(void)

@@ -1,65 +1,65 @@
 #include "stm32f1xx_ll_gpio.h"
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <fs/fs.h>
 
-static struct led_struct {
+static struct led_device {
     struct inode *inode;
+    struct dentry *dentry;
     GPIO_TypeDef *gpio;
     int gpio_pin;
 } led0, led1;
 
-static int led_open(struct inode *inode)
+static int led_open(struct file *file)
+{
+    if (strcmp(file->dentry->name, "led0") == 0) {
+        file->private_data = &led0;
+    } else if (strcmp(file->dentry->name, "led1") == 0) {
+        file->private_data = &led1;
+    } else {
+        assert(0);
+    }
+
+    return 0;
+}
+
+static int led_close(struct file *file)
 {
     return 0;
 }
 
-static int led_close(struct inode *inode)
+static int led_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int led_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
+static int led_write(struct file *file, const void *buf, uint32_t len)
 {
-    return 0;
-}
+    struct led_device *device = file->private_data;
 
-static int led_write(struct inode *inode, const void *buf, uint32_t len)
-{
     if (atoi(buf) == 1) {
-        if (inode == led0.inode)
-            LL_GPIO_ResetOutputPin(led0.gpio, led0.gpio_pin);
-        else if (inode == led1.inode)
-            LL_GPIO_ResetOutputPin(led1.gpio, led1.gpio_pin);
+        LL_GPIO_ResetOutputPin(device->gpio, device->gpio_pin);
     } else if (atoi(buf) == 0) {
-        if (inode == led0.inode)
-            LL_GPIO_SetOutputPin(led0.gpio, led0.gpio_pin);
-        else if (inode == led1.inode)
-            LL_GPIO_SetOutputPin(led1.gpio, led1.gpio_pin);
+        LL_GPIO_SetOutputPin(device->gpio, device->gpio_pin);
     }
-    return -1;
+    return 1;
 }
 
-static int led_read(struct inode *inode, void *buf, uint32_t len)
+static int led_read(struct file *file, void *buf, uint32_t len)
 {
-    if (inode == led0.inode) {
-        if (LL_GPIO_IsOutputPinSet(led0.gpio, led0.gpio_pin))
-            ((char *)buf)[0] =  0x30;
-        else
-            ((char *)buf)[0] =  0x31;
-        return 1;
-    } else if (inode == led1.inode) {
-        if (LL_GPIO_IsOutputPinSet(led1.gpio, led1.gpio_pin))
-            ((char *)buf)[0] =  0x30;
-        else
-            ((char *)buf)[0] =  0x31;
-        return 1;
-    }
-    return -1;
+    struct led_device *device = file->private_data;
+
+    if (LL_GPIO_IsOutputPinSet(device->gpio, device->gpio_pin))
+        ((char *)buf)[0] =  0x30;
+    else
+        ((char *)buf)[0] =  0x31;
+    return 1;
 }
 
-static inode_ops_t led_ops =  {
+static struct file_operations led_fops =  {
     .open = led_open,
     .close = led_close,
     .ioctl = led_ioctl,
@@ -76,22 +76,26 @@ static void led0_init(void)
     GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-    led0.gpio = GPIOC;
-    led0.gpio_pin = LL_GPIO_PIN_13;
-    led0.inode = calloc(1, sizeof(*led0.inode));
-    led0.inode->type = INODE_TYPE_CHAR;
-    led0.inode->ops = led_ops;
-    INIT_LIST_HEAD(&led0.inode->node);
 
     // fs
-    struct dentry *den0 = calloc(1, sizeof(*den0));
-    snprintf(den0->name, sizeof(den0->name), "%s", "led0");
-    den0->type = DENTRY_TYPE_FILE;
-    den0->parent = NULL;
-    INIT_LIST_HEAD(&den0->childs);
-    INIT_LIST_HEAD(&den0->child_node);
-    den0->inode = led0.inode;
-    dentry_add("/dev", den0);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = led_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "led0");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // led0
+    led0.inode = inode;
+    led0.dentry = den;
+    led0.gpio = GPIOC;
+    led0.gpio_pin = LL_GPIO_PIN_13;
 }
 
 static void led1_init(void)
@@ -103,22 +107,26 @@ static void led1_init(void)
     GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    led1.gpio = GPIOA;
-    led1.gpio_pin = LL_GPIO_PIN_1;
-    led1.inode = calloc(1, sizeof(*led1.inode));
-    led1.inode->type = INODE_TYPE_CHAR;
-    led1.inode->ops = led_ops;
-    INIT_LIST_HEAD(&led1.inode->node);
 
     // fs
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "led1");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = led1.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = led_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "led1");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // led1
+    led1.inode = inode;
+    led1.dentry = den;
+    led1.gpio = GPIOA;
+    led1.gpio_pin = LL_GPIO_PIN_1;
 }
 
 void led_init(void)

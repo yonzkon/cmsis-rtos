@@ -11,7 +11,7 @@ static int vprintk(const char *format, va_list ap)
     static char buffer[512];
 
     int rc = vsnprintf(buffer, sizeof(buffer), format, ap);
-    UART1_write(buffer, rc);
+    __uart_write(&uart_dev1, buffer, rc);
 
     return -1;
 }

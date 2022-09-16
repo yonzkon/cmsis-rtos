@@ -1,153 +1,113 @@
 #include "stm32f1xx_ll_bus.h"
 #include "stm32f1xx_ll_gpio.h"
 #include "stm32f1xx_ll_spi.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <printk.h>
 #include <fs/fs.h>
 
-void SPI1_cs_sel(void)
+void SPI_cs_sel(SPI_TypeDef *SPIx)
 {
-    LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    if (SPIx == SPI1)
+        LL_GPIO_ResetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    else if (SPIx == SPI2)
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_12);
 }
 
-void SPI1_cs_desel(void)
+void SPI_cs_desel(SPI_TypeDef *SPIx)
 {
-    LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    if (SPIx == SPI1)
+        LL_GPIO_SetOutputPin(GPIOA, LL_GPIO_PIN_4);
+    else if (SPIx == SPI2)
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_12);
 }
 
-static uint8_t SPI1_read_write_byte(uint8_t byte)
+static uint8_t SPI_read_write_byte(SPI_TypeDef *SPIx, uint8_t byte)
 {
-    while((SPI1->SR & SPI_SR_TXE) == RESET);
-    SPI1->DR = byte;
-    while((SPI1->SR & SPI_SR_RXNE) == RESET);
-    return SPI1->DR;
+    while((SPIx->SR & SPI_SR_TXE) == RESET);
+    SPIx->DR = byte;
+    while((SPIx->SR & SPI_SR_RXNE) == RESET);
+    return SPIx->DR;
 }
 
-uint8_t SPI1_read_byte()
+uint8_t SPI_read_byte(SPI_TypeDef *SPIx)
 {
-    return SPI1_read_write_byte(0x00);
+    return SPI_read_write_byte(SPIx, 0x00);
 }
 
-void SPI1_write_byte(uint8_t byte)
+void SPI_write_byte(SPI_TypeDef *SPIx, uint8_t byte)
 {
-    SPI1_read_write_byte(byte);
+    SPI_read_write_byte(SPIx, byte);
 }
 
-int SPI1_read(void *buf, uint32_t len)
+int SPI_read(SPI_TypeDef *SPIx, void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        ((uint8_t *)buf)[i] = SPI1_read_write_byte(0x00);
+        ((uint8_t *)buf)[i] = SPI_read_write_byte(SPIx, 0x00);
     return len;
 }
 
-int SPI1_write(const void *buf, uint32_t len)
+int SPI_write(SPI_TypeDef *SPIx, const void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
-        SPI1_read_write_byte(((uint8_t *)buf)[i]);
+        SPI_read_write_byte(SPIx, ((uint8_t *)buf)[i]);
     return len;
 }
 
-void SPI2_cs_sel(void)
-{
-    LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_12);
-}
-
-void SPI2_cs_desel(void)
-{
-    LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_12);
-}
-
-static uint8_t SPI2_read_write_byte(uint8_t byte)
-{
-    while((SPI2->SR & SPI_SR_TXE) == RESET);
-    SPI2->DR = byte;
-    while((SPI2->SR & SPI_SR_RXNE) == RESET);
-    return SPI2->DR;
-}
-
-uint8_t SPI2_read_byte()
-{
-    return SPI2_read_write_byte(0x00);
-}
-
-void SPI2_write_byte(uint8_t byte)
-{
-    SPI2_read_write_byte(byte);
-}
-
-int SPI2_read(void *buf, uint32_t len)
-{
-    for (int i = 0; i < len; i++)
-        ((uint8_t *)buf)[i] = SPI2_read_write_byte(0x00);
-    return len;
-}
-
-int SPI2_write(const void *buf, uint32_t len)
-{
-    for (int i = 0; i < len; i++)
-        SPI2_read_write_byte(((uint8_t *)buf)[i]);
-    return len;
-}
-
-static struct spi_struct {
+static struct spi_device {
     struct inode *inode;
-} spi1, spi2;
+    struct dentry *dentry;
+    SPI_TypeDef *spi;
+} spi_dev1, spi_dev2;
 
-static int spi_open(struct inode *inode)
+static int spi_open(struct file *file)
 {
-    return 0;
-}
-
-static int spi_close(struct inode *inode)
-{
-    return 0;
-}
-
-static int spi_ioctl(struct inode *inode, unsigned int cmd, unsigned long arg)
-{
-    return 0;
-}
-
-static int spi_write(struct inode *inode, const void *buf, uint32_t len)
-{
-    int rc = 0;
-    if (inode == spi1.inode) {
-        SPI1_cs_sel();
-        rc = SPI1_write(buf, len);
-        SPI1_cs_desel();
-        return rc;
-    } else if (inode == spi2.inode) {
-        SPI2_cs_sel();
-        rc = SPI2_write(buf, len);
-        SPI2_cs_desel();
-        return rc;
+    if (strcmp(file->dentry->name, "spi1") == 0) {
+        file->private_data = &spi_dev1;
+    } else if (strcmp(file->dentry->name, "spi2") == 0) {
+        file->private_data = &spi_dev2;
+    } else {
+        assert(0);
     }
-    errno = ENODEV;
-    return -1;
+
+    return 0;
 }
 
-static int spi_read(struct inode *inode, void *buf, uint32_t len)
+static int spi_close(struct file *file)
 {
-    int rc = 0;
-    if (inode == spi1.inode) {
-        SPI1_cs_sel();
-        rc = SPI1_read(buf, len);
-        SPI1_cs_desel();
-        return rc;
-    } else if (inode == spi2.inode) {
-        SPI2_cs_sel();
-        rc = SPI2_read(buf, len);
-        SPI2_cs_desel();
-        return rc;
-    }
-    errno = ENODEV;
-    return -1;
+    return 0;
 }
 
-static inode_ops_t spi_ops =  {
+static int spi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    return 0;
+}
+
+static int spi_write(struct file *file, const void *buf, uint32_t len)
+{
+    struct spi_device *device = file->private_data;
+
+    SPI_cs_sel(device->spi);
+    int rc = SPI_write(device->spi, buf, len);
+    SPI_cs_desel(device->spi);
+    return rc;
+}
+
+static int spi_read(struct file *file, void *buf, uint32_t len)
+{
+    struct spi_device *device = file->private_data;
+
+    SPI_cs_sel(device->spi);
+    int rc = SPI_read(device->spi, buf, len);
+    SPI_cs_desel(device->spi);
+    return rc;
+}
+
+static struct file_operations spi_fops =  {
     .open = spi_open,
     .close = spi_close,
     .ioctl = spi_ioctl,
@@ -199,18 +159,23 @@ static void SPI1_init(void)
     LL_SPI_Enable(SPI1);
 
     // fs init
-    spi1.inode = calloc(1, sizeof(*spi1.inode));
-    spi1.inode->type = INODE_TYPE_CHAR;
-    spi1.inode->ops = spi_ops;
-    INIT_LIST_HEAD(&spi1.inode->node);
-    struct dentry *den1 = calloc(1, sizeof(*den1));
-    snprintf(den1->name, sizeof(den1->name), "%s", "spi1");
-    den1->type = DENTRY_TYPE_FILE;
-    den1->parent = NULL;
-    INIT_LIST_HEAD(&den1->childs);
-    INIT_LIST_HEAD(&den1->child_node);
-    den1->inode = spi1.inode;
-    dentry_add("/dev", den1);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = spi_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "spi1");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // spi_device
+    spi_dev1.inode = inode;
+    spi_dev1.dentry = den;
+    spi_dev1.spi = SPI1;
 }
 
 static void SPI2_init(void)
@@ -257,18 +222,23 @@ static void SPI2_init(void)
     LL_SPI_Enable(SPI2);
 
     // fs init
-    spi2.inode = calloc(1, sizeof(*spi2.inode));
-    spi2.inode->type = INODE_TYPE_CHAR;
-    spi2.inode->ops = spi_ops;
-    INIT_LIST_HEAD(&spi2.inode->node);
-    struct dentry *den2 = calloc(1, sizeof(*den2));
-    snprintf(den2->name, sizeof(den2->name), "%s", "spi2");
-    den2->type = DENTRY_TYPE_FILE;
-    den2->parent = NULL;
-    INIT_LIST_HEAD(&den2->childs);
-    INIT_LIST_HEAD(&den2->child_node);
-    den2->inode = spi2.inode;
-    dentry_add("/dev", den2);
+    struct inode *inode = calloc(1, sizeof(*inode));
+    inode->type = INODE_TYPE_CHAR;
+    inode->f_ops = spi_fops;
+    INIT_LIST_HEAD(&inode->node);
+    struct dentry *den = calloc(1, sizeof(*den));
+    snprintf(den->name, sizeof(den->name), "%s", "spi2");
+    den->type = DENTRY_TYPE_FILE;
+    den->inode = inode;
+    den->parent = NULL;
+    INIT_LIST_HEAD(&den->childs);
+    INIT_LIST_HEAD(&den->child_node);
+    dentry_add("/dev", den);
+
+    // spi_device
+    spi_dev2.inode = inode;
+    spi_dev2.dentry = den;
+    spi_dev2.spi = SPI2;
 }
 
 void spi_init(void)
