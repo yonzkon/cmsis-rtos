@@ -175,7 +175,6 @@ static void I2C1_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &i2c_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "i2c1");
     den->type = DENTRY_TYPE_FILE;

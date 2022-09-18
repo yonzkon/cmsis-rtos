@@ -255,7 +255,6 @@ void ssd1306_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &ssd1306_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ssd1306");
     den->type = DENTRY_TYPE_FILE;

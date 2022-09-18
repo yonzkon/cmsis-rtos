@@ -8,8 +8,6 @@
 #include <syscall/syscall.h>
 #include <list.h>
 
-static LIST_HEAD(files);
-
 int sys_read(int fd, char *buf, int len)
 {
     for (int i = 1; i < TASK_FILES; i++) {
@@ -56,8 +54,6 @@ int sys_open(const char *pathname, int flags)
                 filp->inode = den->inode;
                 filp->dentry = den;
                 filp->f_ops = (void *)den->inode->f_ops;
-                INIT_LIST_HEAD(&filp->node);
-                list_add(&filp->node, &files);
                 filp->private_data = NULL;
                 assert(filp->f_ops->open);
                 filp->f_ops->open(filp);
@@ -78,7 +74,6 @@ int sys_close(int fd)
         if (filp->fd == fd) {
             assert(filp->f_ops->close);
             filp->f_ops->close(filp);
-            list_del(&filp->node);
             free(filp);
             current->files[i] = NULL;
             return 0;

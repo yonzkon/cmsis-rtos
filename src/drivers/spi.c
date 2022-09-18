@@ -162,7 +162,6 @@ static void SPI1_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &spi_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "spi1");
     den->type = DENTRY_TYPE_FILE;
@@ -225,7 +224,6 @@ static void SPI2_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &spi_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "spi2");
     den->type = DENTRY_TYPE_FILE;

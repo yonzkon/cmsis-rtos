@@ -14,6 +14,7 @@
 #define INODE_TYPE_FILE 2
 #define INODE_TYPE_CHAR 3
 #define INODE_TYPE_BLOCK 4
+#define INODE_TYPE_SOCKET 5
 
 struct file;
 struct inode;
@@ -29,10 +30,9 @@ struct file_operations {
 
 struct file {
     int fd;
-    struct inode *inode;
     struct dentry *dentry;
+    struct inode *inode;
     struct file_operations *f_ops;
-    struct list_head node;
     void *private_data;
 };
 
@@ -45,7 +45,6 @@ struct inode {
     int type;
     const struct file_operations *f_ops;
     const struct inode_operations *i_ops;
-    struct list_head node;
 };
 
 struct dentry_operations {
@@ -59,7 +58,6 @@ struct dentry {
     struct inode *inode;
     struct dentry *parent;
     const struct dentry_operations *d_ops;
-    struct list_head node;
     struct list_head childs;
     struct list_head child_node;
 };

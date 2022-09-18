@@ -138,7 +138,6 @@ static void USART1_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &uart_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ttyS1");
     den->type = DENTRY_TYPE_FILE;
@@ -198,7 +197,6 @@ static void USART2_init(void)
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
     inode->f_ops = &uart_fops;
-    INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ttyS2");
     den->type = DENTRY_TYPE_FILE;

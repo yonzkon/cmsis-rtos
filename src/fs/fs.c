@@ -10,27 +10,27 @@ static struct dentry d_root;
 static struct inode i_dev;
 static struct dentry d_dev;
 
-int root_open(struct file *filp)
+static int root_open(struct file *filp)
 {
     return -1;
 }
 
-int root_close(struct file *filp)
+static int root_close(struct file *filp)
 {
     return -1;
 }
 
-int root_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static int root_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return -1;
 }
 
-int root_write(struct file *filp, const void *buf, uint32_t len)
+static int root_write(struct file *filp, const void *buf, uint32_t len)
 {
     return -1;
 }
 
-int root_read(struct file *filp, void *buf, uint32_t len)
+static int root_read(struct file *filp, void *buf, uint32_t len)
 {
     return -1;
 }
@@ -53,7 +53,6 @@ void fs_init(void)
     // root
     i_root.type = INODE_TYPE_TMP;
     i_root.f_ops = &f_ops_root;
-    INIT_LIST_HEAD(&i_root.node);
 
     bzero(d_root.name, sizeof(d_root.name));
     d_root.type = DENTRY_TYPE_DIR;
@@ -66,7 +65,6 @@ void fs_init(void)
     // dev
     i_dev.type = INODE_TYPE_TMP;
     i_dev.f_ops = &f_ops_root;
-    INIT_LIST_HEAD(&i_dev.node);
 
     snprintf(d_dev.name, sizeof(d_dev.name), "dev");
     d_dev.type = DENTRY_TYPE_DIR;
