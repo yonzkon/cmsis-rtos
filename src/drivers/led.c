@@ -13,12 +13,12 @@ static struct led_device {
     int gpio_pin;
 } led0, led1;
 
-static int led_open(struct file *file)
+static int led_open(struct file *filp)
 {
-    if (strcmp(file->dentry->name, "led0") == 0) {
-        file->private_data = &led0;
-    } else if (strcmp(file->dentry->name, "led1") == 0) {
-        file->private_data = &led1;
+    if (strcmp(filp->dentry->name, "led0") == 0) {
+        filp->private_data = &led0;
+    } else if (strcmp(filp->dentry->name, "led1") == 0) {
+        filp->private_data = &led1;
     } else {
         assert(0);
     }
@@ -26,19 +26,19 @@ static int led_open(struct file *file)
     return 0;
 }
 
-static int led_close(struct file *file)
+static int led_close(struct file *filp)
 {
     return 0;
 }
 
-static int led_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int led_write(struct file *file, const void *buf, uint32_t len)
+static int led_write(struct file *filp, const void *buf, uint32_t len)
 {
-    struct led_device *device = file->private_data;
+    struct led_device *device = filp->private_data;
 
     if (atoi(buf) == 1) {
         LL_GPIO_ResetOutputPin(device->gpio, device->gpio_pin);
@@ -48,9 +48,9 @@ static int led_write(struct file *file, const void *buf, uint32_t len)
     return 1;
 }
 
-static int led_read(struct file *file, void *buf, uint32_t len)
+static int led_read(struct file *filp, void *buf, uint32_t len)
 {
-    struct led_device *device = file->private_data;
+    struct led_device *device = filp->private_data;
 
     if (LL_GPIO_IsOutputPinSet(device->gpio, device->gpio_pin))
         ((char *)buf)[0] =  0x30;
@@ -80,7 +80,7 @@ static void led0_init(void)
     // fs
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = led_fops;
+    inode->f_ops = &led_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "led0");
@@ -111,7 +111,7 @@ static void led1_init(void)
     // fs
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = led_fops;
+    inode->f_ops = &led_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "led1");

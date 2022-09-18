@@ -193,18 +193,18 @@ static struct ssd1306_device {
     struct dentry *dentry;
 } ssd1306;
 
-static int ssd1306_open(struct file *file)
+static int ssd1306_open(struct file *filp)
 {
-    file->private_data = &ssd1306;
+    filp->private_data = &ssd1306;
     return 0;
 }
 
-static int ssd1306_close(struct file *file)
+static int ssd1306_close(struct file *filp)
 {
     return 0;
 }
 
-static int ssd1306_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int ssd1306_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     if (cmd == SSD1306_IOCTL_WRITE_CMD) {
         ssd1306_write_cmd(arg);
@@ -215,7 +215,7 @@ static int ssd1306_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return -1;
 }
 
-static int ssd1306_write(struct file *file, const void *buf, uint32_t len)
+static int ssd1306_write(struct file *filp, const void *buf, uint32_t len)
 {
     int rc = 0;
     ssd1306_dc_desel();
@@ -225,7 +225,7 @@ static int ssd1306_write(struct file *file, const void *buf, uint32_t len)
     return rc;
 }
 
-static int ssd1306_read(struct file *file, void *buf, uint32_t len)
+static int ssd1306_read(struct file *filp, void *buf, uint32_t len)
 {
     int rc = 0;
     ssd1306_dc_desel();
@@ -254,7 +254,7 @@ void ssd1306_init(void)
     // fs
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = ssd1306_fops;
+    inode->f_ops = &ssd1306_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ssd1306");

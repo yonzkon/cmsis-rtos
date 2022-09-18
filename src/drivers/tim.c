@@ -12,27 +12,27 @@ static struct tim_device {
     struct dentry *dentry;
 } tim1_dev;
 
-static int tim_open(struct file *file)
+static int tim_open(struct file *filp)
 {
     return 0;
 }
 
-static int tim_close(struct file *file)
+static int tim_close(struct file *filp)
 {
     return 0;
 }
 
-static int tim_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int tim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int tim_write(struct file *file, const void *buf, uint32_t len)
+static int tim_write(struct file *filp, const void *buf, uint32_t len)
 {
     return 0;
 }
 
-static int tim_read(struct file *file, void *buf, uint32_t len)
+static int tim_read(struct file *filp, void *buf, uint32_t len)
 {
     return snprintf(buf, len, "%llu", tim1_tick_ms);
 }
@@ -76,7 +76,7 @@ static void TIM1_init(void)
     // fs
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = tim_fops;
+    inode->f_ops = &tim_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "tim1");

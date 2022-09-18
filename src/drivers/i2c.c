@@ -87,24 +87,24 @@ static struct i2c_device {
     uint8_t addr;
 } i2c_dev1;
 
-static int i2c_open(struct file *file)
+static int i2c_open(struct file *filp)
 {
-    if (strcmp(file->dentry->name, "i2c1") == 0) {
-        file->private_data = &i2c_dev1;
+    if (strcmp(filp->dentry->name, "i2c1") == 0) {
+        filp->private_data = &i2c_dev1;
     } else {
         assert(0);
     }
     return 0;
 }
 
-static int i2c_close(struct file *file)
+static int i2c_close(struct file *filp)
 {
     return 0;
 }
 
-static int i2c_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int i2c_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    struct i2c_device *device = file->private_data;
+    struct i2c_device *device = filp->private_data;
 
     if (cmd == I2C_SET_DEV) {
         device->dev = arg;
@@ -117,15 +117,15 @@ static int i2c_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     return -1;
 }
 
-static int i2c_write(struct file *file, const void *buf, uint32_t len)
+static int i2c_write(struct file *filp, const void *buf, uint32_t len)
 {
-    struct i2c_device *device = file->private_data;
+    struct i2c_device *device = filp->private_data;
     return I2C_write(device->i2c, device->dev, device->addr, buf, len);
 }
 
-static int i2c_read(struct file *file, void *buf, uint32_t len)
+static int i2c_read(struct file *filp, void *buf, uint32_t len)
 {
-    struct i2c_device *device = file->private_data;
+    struct i2c_device *device = filp->private_data;
     return I2C_read(device->i2c, device->dev, device->addr, buf, len);
 }
 
@@ -174,7 +174,7 @@ static void I2C1_init(void)
     // fs init
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = i2c_fops;
+    inode->f_ops = &i2c_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "i2c1");

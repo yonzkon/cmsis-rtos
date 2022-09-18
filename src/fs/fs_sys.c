@@ -13,10 +13,10 @@ static LIST_HEAD(files);
 int sys_read(int fd, char *buf, int len)
 {
     for (int i = 1; i < TASK_FILES; i++) {
-        struct file *fp = current->files[i];
-        if (fp->fd == fd) {
-            assert(fp->f_ops.read);
-            return fp->f_ops.read(fp, buf, len);
+        struct file *filp = current->files[i];
+        if (filp->fd == fd) {
+            assert(filp->f_ops->read);
+            return filp->f_ops->read(filp, buf, len);
         }
     }
 
@@ -27,10 +27,10 @@ int sys_read(int fd, char *buf, int len)
 int sys_write(int fd, char *buf, int len)
 {
     for (int i = 1; i < TASK_FILES; i++) {
-        struct file *fp = current->files[i];
-        if (fp->fd == fd) {
-            assert(fp->f_ops.write);
-            return fp->f_ops.write(fp, buf, len);
+        struct file *filp = current->files[i];
+        if (filp->fd == fd) {
+            assert(filp->f_ops->write);
+            return filp->f_ops->write(filp, buf, len);
         }
     }
 
@@ -51,16 +51,17 @@ int sys_open(const char *pathname, int flags)
 
         for (int i = 1; i < TASK_FILES; i++) {
             if (current->files[i] == NULL) {
-                struct file *fp = calloc(1, sizeof(*fp));
-                fp->fd = i;
-                fp->dentry = den;
-                fp->f_ops = den->inode->f_ops;
-                INIT_LIST_HEAD(&fp->node);
-                list_add(&fp->node, &files);
-                fp->private_data = NULL;
-                assert(fp->f_ops.open);
-                fp->f_ops.open(fp);
-                current->files[i] = fp;
+                struct file *filp = calloc(1, sizeof(*filp));
+                filp->fd = i;
+                filp->inode = den->inode;
+                filp->dentry = den;
+                filp->f_ops = (void *)den->inode->f_ops;
+                INIT_LIST_HEAD(&filp->node);
+                list_add(&filp->node, &files);
+                filp->private_data = NULL;
+                assert(filp->f_ops->open);
+                filp->f_ops->open(filp);
+                current->files[i] = filp;
                 return i;
             }
         }
@@ -73,12 +74,12 @@ int sys_open(const char *pathname, int flags)
 int sys_close(int fd)
 {
     for (int i = 1; i < TASK_FILES; i++) {
-        struct file *fp = current->files[i];
-        if (fp->fd == fd) {
-            assert(fp->f_ops.close);
-            fp->f_ops.close(fp);
-            list_del(&fp->node);
-            free(fp);
+        struct file *filp = current->files[i];
+        if (filp->fd == fd) {
+            assert(filp->f_ops->close);
+            filp->f_ops->close(filp);
+            list_del(&filp->node);
+            free(filp);
             current->files[i] = NULL;
             return 0;
         }
@@ -91,10 +92,10 @@ int sys_close(int fd)
 int sys_ioctl(int fd, unsigned int cmd, unsigned long arg)
 {
     for (int i = 1; i < TASK_FILES; i++) {
-        struct file *fp = current->files[i];
-        if (fp->fd == fd) {
-            assert(fp->f_ops.ioctl);
-            return fp->f_ops.ioctl(fp, cmd, arg);
+        struct file *filp = current->files[i];
+        if (filp->fd == fd) {
+            assert(filp->f_ops->ioctl);
+            return filp->f_ops->ioctl(filp, cmd, arg);
         }
     }
 

@@ -10,27 +10,27 @@ static struct dentry d_root;
 static struct inode i_dev;
 static struct dentry d_dev;
 
-int root_open(struct file *file)
+int root_open(struct file *filp)
 {
     return -1;
 }
 
-int root_close(struct file *file)
+int root_close(struct file *filp)
 {
     return -1;
 }
 
-int root_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+int root_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return -1;
 }
 
-int root_write(struct file *file, const void *buf, uint32_t len)
+int root_write(struct file *filp, const void *buf, uint32_t len)
 {
     return -1;
 }
 
-int root_read(struct file *file, void *buf, uint32_t len)
+int root_read(struct file *filp, void *buf, uint32_t len)
 {
     return -1;
 }
@@ -52,7 +52,7 @@ void fs_init(void)
 {
     // root
     i_root.type = INODE_TYPE_TMP;
-    i_root.f_ops = f_ops_root;
+    i_root.f_ops = &f_ops_root;
     INIT_LIST_HEAD(&i_root.node);
 
     bzero(d_root.name, sizeof(d_root.name));
@@ -65,7 +65,7 @@ void fs_init(void)
 
     // dev
     i_dev.type = INODE_TYPE_TMP;
-    i_dev.f_ops = f_ops_root;
+    i_dev.f_ops = &f_ops_root;
     INIT_LIST_HEAD(&i_dev.node);
 
     snprintf(d_dev.name, sizeof(d_dev.name), "dev");
@@ -126,8 +126,8 @@ int dentry_add(const char *path_parent, struct dentry *child)
     if (den == NULL) return -1;
     list_add(&child->child_node, &den->childs);
     child->parent = den;
-    if (child->d_ops.create)
-        child->d_ops.create(child);
+    if (child->d_ops->create)
+        child->d_ops->create(child);
     return 0;
 }
 
@@ -136,7 +136,7 @@ int dentry_del(const char *path)
     struct dentry *den = dentry_walk(path);
     list_del(&den->child_node);
     den->parent = NULL;
-    if (den->d_ops.unlink)
-        den->d_ops.unlink(den);
+    if (den->d_ops->release)
+        den->d_ops->release(den);
     return 0;
 }

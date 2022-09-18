@@ -54,12 +54,12 @@ void USART2_IRQHandler(void)
         ringbuf_write_byte(uart_dev2.rxbuf, USART2->DR & USART_DR_DR);
 }
 
-static int uart_open(struct file *file)
+static int uart_open(struct file *filp)
 {
-    if (strcmp(file->dentry->name, "ttyS1") == 0) {
-        file->private_data = &uart_dev1;
-    } else if (strcmp(file->dentry->name, "ttyS2") == 0) {
-        file->private_data = &uart_dev2;
+    if (strcmp(filp->dentry->name, "ttyS1") == 0) {
+        filp->private_data = &uart_dev1;
+    } else if (strcmp(filp->dentry->name, "ttyS2") == 0) {
+        filp->private_data = &uart_dev2;
     } else {
         assert(0);
     }
@@ -67,25 +67,25 @@ static int uart_open(struct file *file)
     return 0;
 }
 
-static int uart_close(struct file *file)
+static int uart_close(struct file *filp)
 {
     return 0;
 }
 
-static int uart_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int uart_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int uart_write(struct file *file, const void *buf, uint32_t len)
+static int uart_write(struct file *filp, const void *buf, uint32_t len)
 {
-    struct uart_device *device = file->private_data;
+    struct uart_device *device = filp->private_data;
     return __uart_write(device, buf, len);
 }
 
-static int uart_read(struct file *file, void *buf, uint32_t len)
+static int uart_read(struct file *filp, void *buf, uint32_t len)
 {
-    struct uart_device *device = file->private_data;
+    struct uart_device *device = filp->private_data;
     return __uart_read(device, buf, len);
 }
 
@@ -137,7 +137,7 @@ static void USART1_init(void)
     // fs init
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = uart_fops;
+    inode->f_ops = &uart_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ttyS1");
@@ -197,7 +197,7 @@ static void USART2_init(void)
     // fs init
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = uart_fops;
+    inode->f_ops = &uart_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "ttyS2");

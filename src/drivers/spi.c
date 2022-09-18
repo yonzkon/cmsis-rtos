@@ -64,12 +64,12 @@ static struct spi_device {
     SPI_TypeDef *spi;
 } spi_dev1, spi_dev2;
 
-static int spi_open(struct file *file)
+static int spi_open(struct file *filp)
 {
-    if (strcmp(file->dentry->name, "spi1") == 0) {
-        file->private_data = &spi_dev1;
-    } else if (strcmp(file->dentry->name, "spi2") == 0) {
-        file->private_data = &spi_dev2;
+    if (strcmp(filp->dentry->name, "spi1") == 0) {
+        filp->private_data = &spi_dev1;
+    } else if (strcmp(filp->dentry->name, "spi2") == 0) {
+        filp->private_data = &spi_dev2;
     } else {
         assert(0);
     }
@@ -77,19 +77,19 @@ static int spi_open(struct file *file)
     return 0;
 }
 
-static int spi_close(struct file *file)
+static int spi_close(struct file *filp)
 {
     return 0;
 }
 
-static int spi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static int spi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     return 0;
 }
 
-static int spi_write(struct file *file, const void *buf, uint32_t len)
+static int spi_write(struct file *filp, const void *buf, uint32_t len)
 {
-    struct spi_device *device = file->private_data;
+    struct spi_device *device = filp->private_data;
 
     SPI_cs_sel(device->spi);
     int rc = SPI_write(device->spi, buf, len);
@@ -97,9 +97,9 @@ static int spi_write(struct file *file, const void *buf, uint32_t len)
     return rc;
 }
 
-static int spi_read(struct file *file, void *buf, uint32_t len)
+static int spi_read(struct file *filp, void *buf, uint32_t len)
 {
-    struct spi_device *device = file->private_data;
+    struct spi_device *device = filp->private_data;
 
     SPI_cs_sel(device->spi);
     int rc = SPI_read(device->spi, buf, len);
@@ -161,7 +161,7 @@ static void SPI1_init(void)
     // fs init
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = spi_fops;
+    inode->f_ops = &spi_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "spi1");
@@ -224,7 +224,7 @@ static void SPI2_init(void)
     // fs init
     struct inode *inode = calloc(1, sizeof(*inode));
     inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = spi_fops;
+    inode->f_ops = &spi_fops;
     INIT_LIST_HEAD(&inode->node);
     struct dentry *den = calloc(1, sizeof(*den));
     snprintf(den->name, sizeof(den->name), "%s", "spi2");

@@ -16,8 +16,8 @@
 #define INODE_TYPE_BLOCK 4
 
 struct file;
-struct dentry;
 struct inode;
+struct dentry;
 
 struct file_operations {
     int (*open)(struct file *file);
@@ -29,31 +29,39 @@ struct file_operations {
 
 struct file {
     int fd;
+    struct inode *inode;
     struct dentry *dentry;
-    struct file_operations f_ops;
+    struct file_operations *f_ops;
     struct list_head node;
     void *private_data;
 };
 
+struct inode_operations {
+    int (*link)(struct inode *inode);
+    int (*unlink)(struct inode *inode);
+};
+
+struct inode {
+    int type;
+    const struct file_operations *f_ops;
+    const struct inode_operations *i_ops;
+    struct list_head node;
+};
+
 struct dentry_operations {
-    int (*create)(struct dentry *dentry);
-    int (*unlink)(struct dentry *dentry);
+    int (*create)(struct dentry *);
+    void (*release)(struct dentry *);
 };
 
 struct dentry {
     char name[PATH_MAX];
     int type;
     struct inode *inode;
-    struct dentry_operations d_ops;
     struct dentry *parent;
+    const struct dentry_operations *d_ops;
+    struct list_head node;
     struct list_head childs;
     struct list_head child_node;
-};
-
-struct inode {
-    int type;
-    struct file_operations f_ops;
-    struct list_head node;
 };
 
 struct dentry *dentry_walk(const char *path);
