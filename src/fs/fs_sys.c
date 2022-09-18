@@ -49,12 +49,7 @@ int sys_open(const char *pathname, int flags)
 
         for (int i = 1; i < TASK_FILES; i++) {
             if (current->files[i] == NULL) {
-                struct file *filp = calloc(1, sizeof(*filp));
-                filp->fd = i;
-                filp->inode = den->inode;
-                filp->dentry = den;
-                filp->f_ops = (void *)den->inode->f_ops;
-                filp->private_data = NULL;
+                struct file *filp = alloc_file(i, den, den->inode);
                 assert(filp->f_ops->open);
                 filp->f_ops->open(filp);
                 current->files[i] = filp;

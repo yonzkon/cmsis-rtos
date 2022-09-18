@@ -189,7 +189,6 @@ int ssd1306_write_str(const char *str)
 }
 
 static struct ssd1306_device {
-    struct inode *inode;
     struct dentry *dentry;
 } ssd1306;
 
@@ -235,7 +234,7 @@ static int ssd1306_read(struct file *filp, void *buf, uint32_t len)
     return rc;
 }
 
-static struct file_operations ssd1306_fops =  {
+static const struct file_operations ssd1306_fops =  {
     .open = ssd1306_open,
     .close = ssd1306_close,
     .ioctl = ssd1306_ioctl,
@@ -252,19 +251,10 @@ void ssd1306_init(void)
     ssd1306_render();
 
     // fs
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &ssd1306_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "ssd1306");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &ssd1306_fops);
+    struct dentry *dentry = alloc_dentry("ssd1306", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // ssd1306_device
-    ssd1306.inode = inode;
-    ssd1306.dentry = den;
+    ssd1306.dentry = dentry;
 }

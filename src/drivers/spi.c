@@ -59,7 +59,6 @@ int SPI_write(SPI_TypeDef *SPIx, const void *buf, uint32_t len)
 }
 
 static struct spi_device {
-    struct inode *inode;
     struct dentry *dentry;
     SPI_TypeDef *spi;
 } spi_dev1, spi_dev2;
@@ -107,7 +106,7 @@ static int spi_read(struct file *filp, void *buf, uint32_t len)
     return rc;
 }
 
-static struct file_operations spi_fops =  {
+static const struct file_operations spi_fops =  {
     .open = spi_open,
     .close = spi_close,
     .ioctl = spi_ioctl,
@@ -159,21 +158,12 @@ static void SPI1_init(void)
     LL_SPI_Enable(SPI1);
 
     // fs init
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &spi_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "spi1");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &spi_fops);
+    struct dentry *dentry = alloc_dentry("spi1", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // spi_device
-    spi_dev1.inode = inode;
-    spi_dev1.dentry = den;
+    spi_dev1.dentry = dentry;
     spi_dev1.spi = SPI1;
 }
 
@@ -221,21 +211,12 @@ static void SPI2_init(void)
     LL_SPI_Enable(SPI2);
 
     // fs init
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &spi_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "spi2");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &spi_fops);
+    struct dentry *dentry = alloc_dentry("spi2", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // spi_device
-    spi_dev2.inode = inode;
-    spi_dev2.dentry = den;
+    spi_dev2.dentry = dentry;
     spi_dev2.spi = SPI2;
 }
 

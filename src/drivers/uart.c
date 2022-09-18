@@ -12,7 +12,6 @@
 #include <fs/fs.h>
 
 struct uart_device {
-    struct inode *inode;
     struct dentry *dentry;
     struct ringbuf *rxbuf;
     USART_TypeDef *usart;
@@ -89,7 +88,7 @@ static int uart_read(struct file *filp, void *buf, uint32_t len)
     return __uart_read(device, buf, len);
 }
 
-static struct file_operations uart_fops =  {
+static const struct file_operations uart_fops =  {
     .open = uart_open,
     .close = uart_close,
     .ioctl = uart_ioctl,
@@ -135,21 +134,12 @@ static void USART1_init(void)
     LL_USART_Enable(USART1);
 
     // fs init
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &uart_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "ttyS1");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &uart_fops);
+    struct dentry *dentry = alloc_dentry("ttyS1", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // uart_dev1
-    uart_dev1.inode = inode;
-    uart_dev1.dentry = den;
+    uart_dev1.dentry = dentry;
     uart_dev1.rxbuf = ringbuf_new(1024);
     uart_dev1.usart = USART1;
     uart_dev1.irq = USART1_IRQn;
@@ -194,21 +184,12 @@ static void USART2_init(void)
     LL_USART_Enable(USART2);
 
     // fs init
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &uart_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "ttyS2");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &uart_fops);
+    struct dentry *dentry = alloc_dentry("ttyS2", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // uart_dev2
-    uart_dev2.inode = inode;
-    uart_dev2.dentry = den;
+    uart_dev2.dentry = dentry;
     uart_dev2.rxbuf = ringbuf_new(1024);
     uart_dev2.usart = USART2;
     uart_dev2.irq = USART2_IRQn;

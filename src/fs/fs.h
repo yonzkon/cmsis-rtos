@@ -32,7 +32,7 @@ struct file {
     int fd;
     struct dentry *dentry;
     struct inode *inode;
-    struct file_operations *f_ops;
+    const struct file_operations *f_ops;
     void *private_data;
 };
 
@@ -44,7 +44,7 @@ struct inode_operations {
 struct inode {
     int type;
     const struct file_operations *f_ops;
-    const struct inode_operations *i_ops;
+    //const struct inode_operations *i_ops;
 };
 
 struct dentry_operations {
@@ -56,8 +56,8 @@ struct dentry {
     char name[PATH_MAX];
     int type;
     struct inode *inode;
+    //const struct dentry_operations *d_ops;
     struct dentry *parent;
-    const struct dentry_operations *d_ops;
     struct list_head childs;
     struct list_head child_node;
 };
@@ -65,6 +65,10 @@ struct dentry {
 struct dentry *dentry_walk(const char *path);
 int dentry_add(const char *path, struct dentry *child);
 int dentry_del(const char *path);
+
+struct file *alloc_file(int fd, struct dentry *dentry, struct inode *inode);
+struct inode *alloc_inode(int type, const struct file_operations *f_ops);
+struct dentry *alloc_dentry(const char *name, int type, struct inode *inode);
 
 struct dentry *fs_get_root(void);
 void fs_init(void);

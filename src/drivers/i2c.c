@@ -80,7 +80,6 @@ int I2C_read(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, void *buf, uint32_t l
 }
 
 static struct i2c_device {
-    struct inode *inode;
     struct dentry *dentry;
     I2C_TypeDef *i2c;
     uint8_t dev;
@@ -129,7 +128,7 @@ static int i2c_read(struct file *filp, void *buf, uint32_t len)
     return I2C_read(device->i2c, device->dev, device->addr, buf, len);
 }
 
-static struct file_operations i2c_fops =  {
+static const struct file_operations i2c_fops =  {
     .open = i2c_open,
     .close = i2c_close,
     .ioctl = i2c_ioctl,
@@ -172,21 +171,11 @@ static void I2C1_init(void)
     LL_I2C_Enable(I2C1);
 
     // fs init
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &i2c_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "i2c1");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &i2c_fops);
+    struct dentry *dentry = alloc_dentry("i2c1", DENTRY_TYPE_FILE, inode);
 
     // i2c_dev1
-    i2c_dev1.inode = inode;
-    i2c_dev1.dentry = den;
+    i2c_dev1.dentry = dentry;
     i2c_dev1.i2c = I2C1;
 }
 

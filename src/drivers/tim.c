@@ -8,7 +8,6 @@
 uint64_t tim1_tick_ms;
 
 static struct tim_device {
-    struct inode *inode;
     struct dentry *dentry;
 } tim1_dev;
 
@@ -37,7 +36,7 @@ static int tim_read(struct file *filp, void *buf, uint32_t len)
     return snprintf(buf, len, "%llu", tim1_tick_ms);
 }
 
-static struct file_operations tim_fops =  {
+static const struct file_operations tim_fops =  {
     .open = tim_open,
     .close = tim_close,
     .ioctl = tim_ioctl,
@@ -74,21 +73,12 @@ static void TIM1_init(void)
     NVIC_EnableIRQ(TIM1_UP_IRQn);
 
     // fs
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &tim_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "tim1");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &tim_fops);
+    struct dentry *dentry = alloc_dentry("tim1", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // tim1_device
-    tim1_dev.inode = inode;
-    tim1_dev.dentry = den;
+    tim1_dev.dentry = dentry;
 }
 
 void tim_init(void)

@@ -7,7 +7,6 @@
 #include <fs/fs.h>
 
 static struct led_device {
-    struct inode *inode;
     struct dentry *dentry;
     GPIO_TypeDef *gpio;
     int gpio_pin;
@@ -59,7 +58,7 @@ static int led_read(struct file *filp, void *buf, uint32_t len)
     return 1;
 }
 
-static struct file_operations led_fops =  {
+static const struct file_operations led_fops =  {
     .open = led_open,
     .close = led_close,
     .ioctl = led_ioctl,
@@ -78,21 +77,12 @@ static void led0_init(void)
     LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     // fs
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &led_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "led0");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &led_fops);
+    struct dentry *dentry = alloc_dentry("led0", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // led0
-    led0.inode = inode;
-    led0.dentry = den;
+    led0.dentry = dentry;
     led0.gpio = GPIOC;
     led0.gpio_pin = LL_GPIO_PIN_13;
 }
@@ -108,21 +98,12 @@ static void led1_init(void)
     LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     // fs
-    struct inode *inode = calloc(1, sizeof(*inode));
-    inode->type = INODE_TYPE_CHAR;
-    inode->f_ops = &led_fops;
-    struct dentry *den = calloc(1, sizeof(*den));
-    snprintf(den->name, sizeof(den->name), "%s", "led1");
-    den->type = DENTRY_TYPE_FILE;
-    den->inode = inode;
-    den->parent = NULL;
-    INIT_LIST_HEAD(&den->childs);
-    INIT_LIST_HEAD(&den->child_node);
-    dentry_add("/dev", den);
+    struct inode *inode = alloc_inode(INODE_TYPE_CHAR, &led_fops);
+    struct dentry *dentry = alloc_dentry("led1", DENTRY_TYPE_FILE, inode);
+    dentry_add("/dev", dentry);
 
     // led1
-    led1.inode = inode;
-    led1.dentry = den;
+    led1.dentry = dentry;
     led1.gpio = GPIOA;
     led1.gpio_pin = LL_GPIO_PIN_1;
 }
