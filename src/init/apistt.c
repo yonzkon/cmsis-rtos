@@ -3,18 +3,20 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <net/socket.h>
+#include <sys/socket.h>
 #include <log.h>
 #include <atbuf.h>
 #include <srrp.h>
 #include <crc16.h>
 #include <svcx.h>
+#include <apix.h>
+#include <apix-stm32.h>
+#include <net/wizchip_socket.h>
 
-static atbuf_t *rxbuf;
 static struct svchub *hub;
-static int fd_tcp = 1;
 static int fd_tty = 0;
-static uint16_t local_port = 824;
+static int fd_tcp = 1;
+struct apix *ctx;
 
 static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
 {
@@ -24,31 +26,10 @@ static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
     return 0;
 }
 
-int apistt_init()
-{
-    rxbuf = atbuf_new(0);
-    hub = svchub_new();
-    svchub_add_service(hub, "/8888/echo", on_echo);
-
-    fd_tty = open("/dev/ttyS2", 0);
-    assert(fd_tty != -1);
-    return 0;
-}
-
-int apistt_fini()
-{
-    close_socket(fd_tcp);
-    close(fd_tty);
-
-    svchub_del_service(hub, "/8888/echo");
-    svchub_destroy(hub);
-    atbuf_delete(rxbuf);
-    return 0;
-}
-
+#if 0
 void __apistt_loop()
 {
-    int nread = recv(fd_tcp, (uint8_t *)atbuf_write_pos(rxbuf), atbuf_spare(rxbuf));
+    int nread = __recv(fd_tcp, (uint8_t *)atbuf_write_pos(rxbuf), atbuf_spare(rxbuf));
     assert(nread >= 0);
     if (nread == 0) return;
     atbuf_write_advance(rxbuf, nread);
@@ -61,7 +42,7 @@ void __apistt_loop()
         atbuf_read_advance(rxbuf, offset);
         struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
         if (req == NULL) {
-            send(fd_tcp, (uint8_t *)atbuf_read_pos(rxbuf), nread);
+            __send(fd_tcp, (uint8_t *)atbuf_read_pos(rxbuf), nread);
             atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
             close(fd);
             return;
@@ -71,7 +52,7 @@ void __apistt_loop()
         struct srrp_packet *resp = NULL;
         if (svchub_deal(hub, req, &resp) == 0) {
             assert(resp);
-            int nr = send(fd_tcp, (uint8_t *)resp->raw, resp->len);
+            int nr = __send(fd_tcp, (uint8_t *)resp->raw, resp->len);
             assert(nr != -1);
             assert(nr != 0);
 
@@ -93,46 +74,64 @@ void __apistt_loop()
     if (time(0) % 600 == 0) {
         struct srrp_packet *pac = srrp_write_request(
             8888, "/8888/alive", "{}");
-        send(fd_tcp, (uint8_t *)pac->raw, pac->len);
+        __send(fd_tcp, (uint8_t *)pac->raw, pac->len);
         srrp_free(pac);
     }
 }
+#endif
 
-void apistt_loop(void)
+int on_pollin(int fd, const char *buf, size_t len)
+{
+    write(fd_tty, buf, len);
+    return len;
+}
+
+int on_close(int fd)
+{
+    fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
+    apix_set_callback(ctx, fd_tcp, on_close, on_pollin, NULL);
+    return 0;
+}
+
+static void apistt_loop(void)
 {
     // fd_tty
     uint8_t buf[256] = {0};
     int nr = read(fd_tty, buf, 256);
     if (nr > 0)
-        send(fd_tcp, (uint8_t *)buf, nr);
+        __send(fd_tcp, (uint8_t *)buf, nr);
 
     // fd_tcp
-    uint8_t sr = getSn_SR(fd_tcp);
-    if (sr == SOCK_CLOSED) {
-        socket(fd_tcp, Sn_MR_TCP, local_port, Sn_MR_ND);
-    } else if (sr == SOCK_INIT) {
-        listen(fd_tcp);
-    } else if (sr == SOCK_ESTABLISHED) {
-        // 清除接收中断标志位
-        if (getSn_IR(fd_tcp) & Sn_IR_CON)
-            setSn_IR(fd_tcp, Sn_IR_CON);
+    apix_poll(ctx);
+}
 
-        // 定义len为已接收数据的长度
-        uint16_t len = getSn_RX_RSR(fd_tcp);
-        if (len > 0) {
-            int nread = recv(fd_tcp, (uint8_t *)atbuf_write_pos(rxbuf),
-                             atbuf_spare(rxbuf));
-            assert(nread >= 0);
-            if (nread > 0)
-                atbuf_write_advance(rxbuf, nread);
+static int apistt_init()
+{
+    hub = svchub_new();
+    svchub_add_service(hub, "/8888/echo", on_echo);
 
-            write(fd_tty, atbuf_read_pos(rxbuf), atbuf_used(rxbuf));
-            atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
-        }
-    } else if (sr == SOCK_CLOSE_WAIT) {
-        disconnect(fd_tcp);
-        close_socket(fd_tcp);
-    }
+    fd_tty = open("/dev/ttyS2", 0);
+    assert(fd_tty != -1);
+
+    ctx = apix_new();
+    apix_enable_stm32(ctx);
+    fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
+    apix_set_callback(ctx, fd_tcp, on_close, on_pollin, NULL);
+
+    return 0;
+}
+
+static int apistt_fini()
+{
+    apix_close(ctx, fd_tcp);
+    apix_disable_stm32(ctx);
+    apix_destroy(ctx);
+
+    close(fd_tty);
+
+    svchub_del_service(hub, "/8888/echo");
+    svchub_destroy(hub);
+    return 0;
 }
 
 void apistt_main(void)

@@ -45,6 +45,7 @@ $(wildcard src/syscall/*.c) \
 $(wildcard src/drivers/*.c) \
 $(wildcard src/fs/*.c) \
 $(wildcard src/net/*.c) \
+$(wildcard src/libc/*.c) \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
@@ -124,6 +125,7 @@ C_INCLUDES =  \
 -Iapix/src \
 -Isrc \
 -Isrc/include \
+-Isrc/libc/include \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/CMSIS/Device/ST/STM32F1xx/Include \
 -IDrivers/CMSIS/Include

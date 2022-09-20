@@ -9,6 +9,15 @@
 #define SYS_CLOSE 6
 #define SYS_IOCTL 7
 #define SYS_SELECT 24
+#define SYS_SOCKET 30
+#define SYS_BIND 31
+#define SYS_CONNECT 32
+#define SYS_ACCEPT 33
+#define SYS_LISTEN 34
+#define SYS_RECV 35
+#define SYS_SEND 36
+#define SYS_SETSOCKOPT 37
+#define SYS_GETSOCKOPT 38
 #define SYS_GETTIMEOFDAY 161
 #define SYS_NANOSLEEP 162
 

@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <drivers/spi.h>
 #include <drivers/ssd1306.h>
+#include "net.h"
 
 static void cris_en(void)
 {
@@ -141,4 +142,6 @@ void net_init(void)
         .dhcp = NETINFO_STATIC,
     };
     w5500_set_netinfo(wiz_netinfo);
+
+    net_sys_init();
 }
