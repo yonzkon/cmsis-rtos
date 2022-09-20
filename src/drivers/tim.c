@@ -26,22 +26,22 @@ static int tim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return 0;
 }
 
-static int tim_write(struct file *filp, const void *buf, uint32_t len)
-{
-    return 0;
-}
-
 static int tim_read(struct file *filp, void *buf, uint32_t len)
 {
     return snprintf(buf, len, "%llu", tim1_tick_ms);
+}
+
+static int tim_write(struct file *filp, const void *buf, uint32_t len)
+{
+    return 0;
 }
 
 static const struct file_operations tim_fops =  {
     .open = tim_open,
     .close = tim_close,
     .ioctl = tim_ioctl,
-    .write = tim_write,
     .read = tim_read,
+    .write = tim_write,
 };
 
 void TIM1_UP_IRQHandler(void)

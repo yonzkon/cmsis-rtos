@@ -21,11 +21,11 @@ struct inode;
 struct dentry;
 
 struct file_operations {
-    int (*open)(struct file *file);
-    int (*close)(struct file *file);
-    int (*ioctl)(struct file *file, unsigned int cmd, unsigned long arg);
-    int (*write)(struct file *file, const void *buf, uint32_t len);
-    int (*read)(struct file *file, void *buf, uint32_t len);
+    int (*open)(struct file *filp);
+    int (*close)(struct file *filp);
+    int (*ioctl)(struct file *filp, unsigned int cmd, unsigned long arg);
+    int (*read)(struct file *filp, void *buf, uint32_t len);
+    int (*write)(struct file *filp, const void *buf, uint32_t len);
 };
 
 struct file {

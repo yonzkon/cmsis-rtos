@@ -86,16 +86,6 @@ static int spi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return 0;
 }
 
-static int spi_write(struct file *filp, const void *buf, uint32_t len)
-{
-    struct spi_device *device = filp->private_data;
-
-    SPI_cs_sel(device->spi);
-    int rc = SPI_write(device->spi, buf, len);
-    SPI_cs_desel(device->spi);
-    return rc;
-}
-
 static int spi_read(struct file *filp, void *buf, uint32_t len)
 {
     struct spi_device *device = filp->private_data;
@@ -106,12 +96,22 @@ static int spi_read(struct file *filp, void *buf, uint32_t len)
     return rc;
 }
 
+static int spi_write(struct file *filp, const void *buf, uint32_t len)
+{
+    struct spi_device *device = filp->private_data;
+
+    SPI_cs_sel(device->spi);
+    int rc = SPI_write(device->spi, buf, len);
+    SPI_cs_desel(device->spi);
+    return rc;
+}
+
 static const struct file_operations spi_fops =  {
     .open = spi_open,
     .close = spi_close,
     .ioctl = spi_ioctl,
-    .write = spi_write,
     .read = spi_read,
+    .write = spi_write,
 };
 
 static void SPI1_init(void)

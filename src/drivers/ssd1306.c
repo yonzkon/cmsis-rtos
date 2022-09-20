@@ -214,16 +214,6 @@ static int ssd1306_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return -1;
 }
 
-static int ssd1306_write(struct file *filp, const void *buf, uint32_t len)
-{
-    int rc = 0;
-    ssd1306_dc_desel();
-    SPI_cs_sel(SPI2);
-    rc = SPI_write(SPI2, buf, len);
-    SPI_cs_desel(SPI2);
-    return rc;
-}
-
 static int ssd1306_read(struct file *filp, void *buf, uint32_t len)
 {
     int rc = 0;
@@ -234,12 +224,22 @@ static int ssd1306_read(struct file *filp, void *buf, uint32_t len)
     return rc;
 }
 
+static int ssd1306_write(struct file *filp, const void *buf, uint32_t len)
+{
+    int rc = 0;
+    ssd1306_dc_desel();
+    SPI_cs_sel(SPI2);
+    rc = SPI_write(SPI2, buf, len);
+    SPI_cs_desel(SPI2);
+    return rc;
+}
+
 static const struct file_operations ssd1306_fops =  {
     .open = ssd1306_open,
     .close = ssd1306_close,
     .ioctl = ssd1306_ioctl,
-    .write = ssd1306_write,
     .read = ssd1306_read,
+    .write = ssd1306_write,
 };
 
 void ssd1306_init(void)

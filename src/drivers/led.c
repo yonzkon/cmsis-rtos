@@ -35,6 +35,17 @@ static int led_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return 0;
 }
 
+static int led_read(struct file *filp, void *buf, uint32_t len)
+{
+    struct led_device *device = filp->private_data;
+
+    if (LL_GPIO_IsOutputPinSet(device->gpio, device->gpio_pin))
+        ((char *)buf)[0] =  0x30;
+    else
+        ((char *)buf)[0] =  0x31;
+    return 1;
+}
+
 static int led_write(struct file *filp, const void *buf, uint32_t len)
 {
     struct led_device *device = filp->private_data;
@@ -47,23 +58,12 @@ static int led_write(struct file *filp, const void *buf, uint32_t len)
     return 1;
 }
 
-static int led_read(struct file *filp, void *buf, uint32_t len)
-{
-    struct led_device *device = filp->private_data;
-
-    if (LL_GPIO_IsOutputPinSet(device->gpio, device->gpio_pin))
-        ((char *)buf)[0] =  0x30;
-    else
-        ((char *)buf)[0] =  0x31;
-    return 1;
-}
-
 static const struct file_operations led_fops =  {
     .open = led_open,
     .close = led_close,
     .ioctl = led_ioctl,
-    .write = led_write,
     .read = led_read,
+    .write = led_write,
 };
 
 static void led0_init(void)

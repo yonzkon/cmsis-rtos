@@ -24,13 +24,6 @@ void __uart_write_byte(struct uart_device *device, uint8_t byte)
     LL_USART_TransmitData8(device->usart, byte);
 }
 
-int __uart_write(struct uart_device *device, const void *buf, size_t len)
-{
-    for (int i = 0; i < len; i++)
-        __uart_write_byte(device, ((uint8_t *)buf)[i]);
-    return len;
-}
-
 int __uart_read(struct uart_device *device, void *buf, size_t len)
 {
     NVIC_DisableIRQ(device->irq);
@@ -39,6 +32,13 @@ int __uart_read(struct uart_device *device, void *buf, size_t len)
     ringbuf_read(device->rxbuf, buf, len);
     NVIC_EnableIRQ(device->irq);
     return n;
+}
+
+int __uart_write(struct uart_device *device, const void *buf, size_t len)
+{
+    for (int i = 0; i < len; i++)
+        __uart_write_byte(device, ((uint8_t *)buf)[i]);
+    return len;
 }
 
 void USART1_IRQHandler(void)
@@ -76,24 +76,24 @@ static int uart_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return 0;
 }
 
-static int uart_write(struct file *filp, const void *buf, uint32_t len)
-{
-    struct uart_device *device = filp->private_data;
-    return __uart_write(device, buf, len);
-}
-
 static int uart_read(struct file *filp, void *buf, uint32_t len)
 {
     struct uart_device *device = filp->private_data;
     return __uart_read(device, buf, len);
 }
 
+static int uart_write(struct file *filp, const void *buf, uint32_t len)
+{
+    struct uart_device *device = filp->private_data;
+    return __uart_write(device, buf, len);
+}
+
 static const struct file_operations uart_fops =  {
     .open = uart_open,
     .close = uart_close,
     .ioctl = uart_ioctl,
-    .write = uart_write,
     .read = uart_read,
+    .write = uart_write,
 };
 
 static void USART1_init(void)

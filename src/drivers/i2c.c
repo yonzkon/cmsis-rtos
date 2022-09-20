@@ -11,29 +11,6 @@
 #include <printk.h>
 #include <fs/fs.h>
 
-void I2C_write_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, uint8_t byte)
-{
-    while (LL_I2C_IsActiveFlag_BUSY(I2Cx));
-
-    //I2Cx->CR1 |= I2C_CR1_START;
-    LL_I2C_GenerateStartCondition(I2Cx);
-    while (!LL_I2C_IsActiveFlag_SB(I2Cx));
-
-    LL_I2C_TransmitData8(I2Cx, dev << 1);
-    while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
-    LL_I2C_ClearFlag_ADDR(I2Cx);
-
-    //I2Cx->DR = 0x10;
-    LL_I2C_TransmitData8(I2Cx, addr);
-    while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
-
-    //I2Cx->DR = 0xcc;
-    LL_I2C_TransmitData8(I2Cx, byte);
-    while (!LL_I2C_IsActiveFlag_BTF(I2Cx));
-
-    I2Cx->CR1 |= I2C_CR1_STOP;
-}
-
 uint8_t I2C_read_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr)
 {
     while(LL_I2C_IsActiveFlag_BUSY(I2Cx));
@@ -65,17 +42,40 @@ uint8_t I2C_read_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr)
     return LL_I2C_ReceiveData8(I2Cx);
 }
 
-int I2C_write(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, const void *buf, uint32_t len)
+void I2C_write_byte(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, uint8_t byte)
 {
-    for (int i = 0; i < len; i++)
-        I2C_write_byte(I2Cx, dev, addr, ((uint8_t *)buf)[len]);
-    return len;
+    while (LL_I2C_IsActiveFlag_BUSY(I2Cx));
+
+    //I2Cx->CR1 |= I2C_CR1_START;
+    LL_I2C_GenerateStartCondition(I2Cx);
+    while (!LL_I2C_IsActiveFlag_SB(I2Cx));
+
+    LL_I2C_TransmitData8(I2Cx, dev << 1);
+    while (!LL_I2C_IsActiveFlag_ADDR(I2Cx));
+    LL_I2C_ClearFlag_ADDR(I2Cx);
+
+    //I2Cx->DR = 0x10;
+    LL_I2C_TransmitData8(I2Cx, addr);
+    while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
+
+    //I2Cx->DR = 0xcc;
+    LL_I2C_TransmitData8(I2Cx, byte);
+    while (!LL_I2C_IsActiveFlag_BTF(I2Cx));
+
+    I2Cx->CR1 |= I2C_CR1_STOP;
 }
 
 int I2C_read(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, void *buf, uint32_t len)
 {
     for (int i = 0; i < len; i++)
         ((uint8_t *)buf)[len] = I2C_read_byte(I2Cx, dev, addr);
+    return len;
+}
+
+int I2C_write(I2C_TypeDef *I2Cx, uint8_t dev, uint8_t addr, const void *buf, uint32_t len)
+{
+    for (int i = 0; i < len; i++)
+        I2C_write_byte(I2Cx, dev, addr, ((uint8_t *)buf)[len]);
     return len;
 }
 
@@ -116,24 +116,24 @@ static int i2c_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return -1;
 }
 
-static int i2c_write(struct file *filp, const void *buf, uint32_t len)
-{
-    struct i2c_device *device = filp->private_data;
-    return I2C_write(device->i2c, device->dev, device->addr, buf, len);
-}
-
 static int i2c_read(struct file *filp, void *buf, uint32_t len)
 {
     struct i2c_device *device = filp->private_data;
     return I2C_read(device->i2c, device->dev, device->addr, buf, len);
 }
 
+static int i2c_write(struct file *filp, const void *buf, uint32_t len)
+{
+    struct i2c_device *device = filp->private_data;
+    return I2C_write(device->i2c, device->dev, device->addr, buf, len);
+}
+
 static const struct file_operations i2c_fops =  {
     .open = i2c_open,
     .close = i2c_close,
     .ioctl = i2c_ioctl,
-    .write = i2c_write,
     .read = i2c_read,
+    .write = i2c_write,
 };
 
 static void I2C1_init(void)
