@@ -33,8 +33,10 @@ void task_init(void)
     extern void idle(void);
     extern void shell_main(void);
     extern void apistt_main(void);
+    extern void modbus_slave_main(void);
 
     current = task_create(idle);
     task_create(shell_main);
     task_create(apistt_main);
+    task_create(modbus_slave_main);
 }

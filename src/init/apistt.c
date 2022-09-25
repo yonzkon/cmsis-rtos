@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <log.h>
 #include <atbuf.h>
 #include <srrp.h>

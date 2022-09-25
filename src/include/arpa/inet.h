@@ -134,6 +134,7 @@ int		 inet_net_pton(int, const char *, void *, size_t);
 unsigned	 inet_nsap_addr(const char *, unsigned char *, int);
 char		*inet_nsap_ntoa(int, const unsigned char *, char *);
 // yonz added
+#define INADDR_ANY ((unsigned long int) 0x00000000)
 #define INADDR_NONE (0xffffffff)
 uint32_t htonl(uint32_t hostlong);
 uint16_t htons(uint16_t hostshort);

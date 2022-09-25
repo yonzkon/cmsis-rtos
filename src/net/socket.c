@@ -42,25 +42,30 @@ static const struct file_operations f_ops_sock = {
 static int sock_bind(struct socket *sock, const struct sockaddr *myaddr, int sockaddr_len)
 {
     struct sockaddr_in *addr = (struct sockaddr_in *)myaddr;
-    __bind(sock->fd, addr->sin_port, Sn_MR_ND);
-    return 0;
+    return __bind(sock->fd, addr->sin_port, Sn_MR_ND);
 }
 
-int sock_connect(struct socket *sock, const struct sockaddr *vaddr,
-                 int sockaddr_len, int flags)
+static int sock_connect(struct socket *sock, const struct sockaddr *vaddr,
+                        int sockaddr_len, int flags)
 {
     struct sockaddr_in *addr = (struct sockaddr_in *)vaddr;
     return __connect(sock->fd, (uint8_t *)addr->sin_addr.s_addr, addr->sin_port);
 }
 
-int sock_accept(struct socket *sock, struct socket *newsock, int flags)
+static int sock_accept(struct socket *sock, struct socket *newsock, int flags)
 {
     return -1;
 }
 
-int sock_listen(struct socket *sock, int len)
+static int sock_listen(struct socket *sock, int backlog)
 {
     return __listen(sock->fd);
+}
+
+static int sock_shutdown(struct socket *sock, int how)
+{
+    //return __disconnect(sock->fd);
+    return 0;
 }
 
 static int sock_recv(struct socket *sock, void *buf, uint32_t len)
@@ -76,7 +81,7 @@ static int sock_recv(struct socket *sock, void *buf, uint32_t len)
             setSn_IR(sock->fd, Sn_IR_CON);
         return __recv(sock->fd, buf, len);
     } else if (sr == SOCK_CLOSE_WAIT) {
-        return -1;
+        return 0;
     }
     assert(0);
     return -1;
@@ -92,6 +97,7 @@ static const struct sock_operations sock_sops = {
     .connect = sock_connect,
     .accept = sock_accept,
     .listen = sock_listen,
+    .shutdown = sock_shutdown,
     .recv = sock_recv,
     .send = sock_send,
 };

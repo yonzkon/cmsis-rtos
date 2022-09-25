@@ -107,6 +107,13 @@ int listen(int socket, int backlog)
     return retval;
 }
 
+int shutdown(int socket, int how)
+{
+    syscall2(SYS_LISTEN, socket, how);
+    register int retval __asm__("r0");
+    return retval;
+}
+
 int recv(int socket, void *buffer, size_t length, int flags)
 {
     syscall3(SYS_RECV, socket, buffer, length);

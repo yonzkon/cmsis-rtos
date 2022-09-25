@@ -30,9 +30,11 @@ at_syscall:
     LDR R6, =syscall_table // R8 = syscall_tabl
     LSL R7, #2             // R7 *= 4
     LDR R6, [R6, R7]       // R6 = syscall_tabl + R7
+    PUSH {R4, R5}          // store R4, R5 to stack for syscalls
     CMP R6, #0             // check if the handler is NULL
     IT NE
     BLXNE R6
+    POP {R4, R5}
     MRS R6, PSP
     STR R0, [R6, #0]      // store r0 to stack which recover to r0
 

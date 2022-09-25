@@ -108,10 +108,152 @@
 #define AF_MCTP		PF_MCTP
 #define AF_MAX		PF_MAX
 
+/* Maximum queue length specifiable by listen.  */
+#define SOMAXCONN	128
+
+/* Flags we can use with send/ and recv. 
+   Added those for 1003.1g not all are supported yet
+ */
+ 
+#define MSG_OOB		1
+#define MSG_PEEK	2
+#define MSG_DONTROUTE	4
+#define MSG_TRYHARD     4       /* Synonym for MSG_DONTROUTE for DECnet */
+#define MSG_CTRUNC	8
+#define MSG_PROBE	0x10	/* Do not send. Only probe path f.e. for MTU */
+#define MSG_TRUNC	0x20
+#define MSG_DONTWAIT	0x40	/* Nonblocking io		 */
+#define MSG_EOR         0x80	/* End of record */
+#define MSG_WAITALL	0x100	/* Wait for a full request */
+#define MSG_FIN         0x200
+#define MSG_SYN		0x400
+#define MSG_CONFIRM	0x800	/* Confirm path validity */
+#define MSG_RST		0x1000
+#define MSG_ERRQUEUE	0x2000	/* Fetch message from error queue */
+#define MSG_NOSIGNAL	0x4000	/* Do not generate SIGPIPE */
+#define MSG_MORE	0x8000	/* Sender will send more */
+#define MSG_WAITFORONE	0x10000	/* recvmmsg(): block until 1+ packets avail */
+
+#define MSG_EOF         MSG_FIN
+
+#define MSG_CMSG_CLOEXEC 0x40000000	/* Set close_on_exit for file
+					   descriptor received through
+					   SCM_RIGHTS */
+#if defined(CONFIG_COMPAT)
+#define MSG_CMSG_COMPAT	0x80000000	/* This message needs 32 bit fixups */
+#else
+#define MSG_CMSG_COMPAT	0		/* We never have 32 bit fixups */
+#endif
+
+
+/* Setsockoptions(2) level. Thanks to BSD these must match IPPROTO_xxx */
+#define SOL_IP		0
+/* #define SOL_ICMP	1	No-no-no! Due to Linux :-) we cannot use SOL_ICMP=1 */
+#define SOL_TCP		6
+#define SOL_UDP		17
+#define SOL_IPV6	41
+#define SOL_ICMPV6	58
+#define SOL_SCTP	132
+#define SOL_UDPLITE	136     /* UDP-Lite (RFC 3828) */
+#define SOL_RAW		255
+#define SOL_IPX		256
+#define SOL_AX25	257
+#define SOL_ATALK	258
+#define SOL_NETROM	259
+#define SOL_ROSE	260
+#define SOL_DECNET	261
+#define	SOL_X25		262
+#define SOL_PACKET	263
+#define SOL_ATM		264	/* ATM layer (cell level) */
+#define SOL_AAL		265	/* ATM Adaption Layer (packet level) */
+#define SOL_IRDA        266
+#define SOL_NETBEUI	267
+#define SOL_LLC		268
+#define SOL_DCCP	269
+#define SOL_NETLINK	270
+#define SOL_TIPC	271
+#define SOL_RXRPC	272
+#define SOL_PPPOL2TP	273
+#define SOL_BLUETOOTH	274
+#define SOL_PNPIPE	275
+#define SOL_RDS		276
+#define SOL_IUCV	277
+#define SOL_CAIF	278
+#define SOL_ALG		279
+
+/* IPX options */
+#define IPX_TYPE	1
+
+/* For setsockopt(2) */
+#define SOL_SOCKET	1
+
+#define SO_DEBUG	1
+#define SO_REUSEADDR	2
+#define SO_TYPE		3
+#define SO_ERROR	4
+#define SO_DONTROUTE	5
+#define SO_BROADCAST	6
+#define SO_SNDBUF	7
+#define SO_RCVBUF	8
+#define SO_SNDBUFFORCE	32
+#define SO_RCVBUFFORCE	33
+#define SO_KEEPALIVE	9
+#define SO_OOBINLINE	10
+#define SO_NO_CHECK	11
+#define SO_PRIORITY	12
+#define SO_LINGER	13
+#define SO_BSDCOMPAT	14
+/* To add :#define SO_REUSEPORT 15 */
+
+#ifndef SO_PASSCRED /* powerpc only differs in these */
+#define SO_PASSCRED	16
+#define SO_PEERCRED	17
+#define SO_RCVLOWAT	18
+#define SO_SNDLOWAT	19
+#define SO_RCVTIMEO	20
+#define SO_SNDTIMEO	21
+#endif
+
+/* Security levels - as per NRL IPv6 - don't actually do anything */
+#define SO_SECURITY_AUTHENTICATION		22
+#define SO_SECURITY_ENCRYPTION_TRANSPORT	23
+#define SO_SECURITY_ENCRYPTION_NETWORK		24
+
+#define SO_BINDTODEVICE	25
+
+/* Socket filtering */
+#define SO_ATTACH_FILTER	26
+#define SO_DETACH_FILTER	27
+
+#define SO_PEERNAME		28
+#define SO_TIMESTAMP		29
+#define SCM_TIMESTAMP		SO_TIMESTAMP
+
+#define SO_ACCEPTCONN		30
+
+#define SO_PEERSEC		31
+#define SO_PASSSEC		34
+#define SO_TIMESTAMPNS		35
+#define SCM_TIMESTAMPNS		SO_TIMESTAMPNS
+
+#define SO_MARK			36
+
+#define SO_TIMESTAMPING		37
+#define SCM_TIMESTAMPING	SO_TIMESTAMPING
+
+#define SO_PROTOCOL		38
+#define SO_DOMAIN		39
+
+#define SO_RXQ_OVFL             40
+
 #include <stdint.h>
 #include <fs/fs.h>
 
-struct socket;
+enum sock_shutdown_cmd {
+	SHUT_RD		= 0,
+	SHUT_WR		= 1,
+	SHUT_RDWR	= 2,
+};
 
 enum sock_type {
 	SOCK_STREAM	= 1,
@@ -138,12 +280,15 @@ struct sockaddr_in {
                         sizeof(uint16_t) - sizeof(struct in_addr)];
 };
 
+struct socket;
+
 struct sock_operations {
     int (*bind)(struct socket *sock, const struct sockaddr *myaddr, int sockaddr_len);
     int (*connect)(struct socket *sock, const struct sockaddr *vaddr,
                    int sockaddr_len, int flags);
     int (*accept)(struct socket *sock, struct socket *newsock, int flags);
-    int (*listen)(struct socket *sock, int len);
+    int (*listen)(struct socket *sock, int backlog);
+    int (*shutdown)(struct socket *sock, int how);
     int (*recv)(struct socket *sock, void *buf, uint32_t len);
     int (*send)(struct socket *sock, const void *buf, uint32_t len);
     int (*setsockopt)(struct socket *sock, int level,
@@ -169,6 +314,7 @@ int bind(int socket, const struct sockaddr *address, socklen_t address_len);
 int connect(int socket, const struct sockaddr *address, socklen_t address_len);
 int accept(int socket, struct sockaddr *restrict address, socklen_t *restrict address_len);
 int listen(int socket, int backlog);
+int shutdown(int socket, int how);
 int recv(int socket, void *buffer, size_t length, int flags);
 int send(int socket, const void *buffer, size_t length, int flags);
 int setsockopt(int socket, int level, int option_name,

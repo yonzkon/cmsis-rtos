@@ -39,6 +39,7 @@ C_SOURCES =  \
 libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
+libmodbus/src/modbus-stm32-tcp.c \
 $(wildcard apix/src/*.c) \
 $(wildcard src/init/*.c) \
 $(wildcard src/syscall/*.c) \

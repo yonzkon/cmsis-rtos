@@ -14,7 +14,7 @@ int sys_socket(int domain, int type, int protocol)
     // only support tcp ...
     assert(domain == PF_INET);
     assert(type == SOCK_STREAM);
-    assert(protocol == 0);
+    //assert(protocol == 0);
 
     for (int i = 1; i < TASK_FILES; i++) {
         if (current->files[i] == NULL) {
@@ -97,6 +97,22 @@ int sys_listen(int socket, int backlog)
     return -1;
 }
 
+int sys_shutdown(int socket, int how)
+{
+    for (int i = 1; i < TASK_FILES; i++) {
+        struct file *filp = current->files[i];
+        if (filp && filp->fd == socket) {
+            struct socket *sock =
+                container_of(filp->inode, struct socket, inode);
+            assert(sock->s_ops->shutdown);
+            return sock->s_ops->shutdown(sock, how);
+        }
+    }
+
+    errno = EBADF;
+    return -1;
+}
+
 int sys_recv(int socket, char *buf, int len)
 {
     for (int i = 1; i < TASK_FILES; i++) {
@@ -164,6 +180,7 @@ void net_sys_init(void)
     syscall_table[SYS_CONNECT] = sys_connect;
     syscall_table[SYS_ACCEPT] = sys_accept;
     syscall_table[SYS_LISTEN] = sys_listen;
+    syscall_table[SYS_SHUTDOWN] = sys_shutdown;
     syscall_table[SYS_RECV] = sys_recv;
     syscall_table[SYS_SEND] = sys_send;
     //syscall_table[SYS_SENDTO] = sys_setsockopt;
