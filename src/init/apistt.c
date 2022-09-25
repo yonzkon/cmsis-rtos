@@ -14,8 +14,9 @@
 #include <net/wizchip_socket.h>
 
 static struct svchub *hub;
-static int fd_tty = 0;
-static int fd_tcp = 1;
+static int fd_shell;
+static int fd_tty;
+static int fd_tcp;
 struct apix *ctx;
 
 static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
@@ -83,13 +84,20 @@ void __apistt_loop()
 int on_pollin(int fd, const char *buf, size_t len)
 {
     write(fd_tty, buf, len);
+    LOG_DEBUG("tcp => com, %s", buf);
     return len;
 }
 
 int on_close(int fd)
 {
+    LOG_DEBUG("tcp close: %d", fd_tcp);
     fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
-    apix_set_callback(ctx, fd_tcp, on_close, on_pollin, NULL);
+    LOG_DEBUG("tcp open: %d", fd_tcp);
+    struct apix_events events = {
+        .on_close = on_close,
+        .on_pollin = on_pollin,
+    };
+    apix_set_events(ctx, fd_tcp, &events);
     return 0;
 }
 
@@ -98,8 +106,10 @@ static void apistt_loop(void)
     // fd_tty
     uint8_t buf[256] = {0};
     int nr = read(fd_tty, buf, 256);
-    if (nr > 0)
+    if (nr > 0) {
         __send(fd_tcp, (uint8_t *)buf, nr);
+        LOG_DEBUG("com => tcp, %s", buf);
+    }
 
     // fd_tcp
     apix_poll(ctx);
@@ -110,13 +120,20 @@ static int apistt_init()
     hub = svchub_new();
     svchub_add_service(hub, "/8888/echo", on_echo);
 
+    fd_shell = open("/dev/ttyS1", 0);
+    assert(fd_shell != -1);
     fd_tty = open("/dev/ttyS2", 0);
     assert(fd_tty != -1);
 
     ctx = apix_new();
     apix_enable_stm32(ctx);
     fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
-    apix_set_callback(ctx, fd_tcp, on_close, on_pollin, NULL);
+    LOG_DEBUG("tcp open: %d", fd_tcp);
+    struct apix_events events = {
+        .on_close = on_close,
+        .on_pollin = on_pollin,
+    };
+    apix_set_events(ctx, fd_tcp, &events);
 
     return 0;
 }
@@ -128,6 +145,7 @@ static int apistt_fini()
     apix_destroy(ctx);
 
     close(fd_tty);
+    close(fd_shell);
 
     svchub_del_service(hub, "/8888/echo");
     svchub_destroy(hub);
