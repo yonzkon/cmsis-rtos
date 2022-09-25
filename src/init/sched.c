@@ -1,6 +1,15 @@
 #include <sched.h>
+#include <printk.h>
 
 extern uint64_t tim1_tick_ms;
+
+void check_psp(void)
+{
+    for (int i = 0; i < TASK_STACK_MAGIC_LEN; i++) {
+        if (current->stack[i] != TASK_STACK_MAGIC)
+            panic("check_psp failed");
+    }
+}
 
 void schedule(void)
 {

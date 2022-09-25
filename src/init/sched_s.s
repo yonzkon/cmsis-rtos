@@ -34,8 +34,11 @@ save_current:
     PUSH {R1, R2, LR}
     LDR R1, =current
     LDR R1, [R1]
+
+    // check if current is 0
     CMP R1, #0
     BEQ out_save_current
+
     STR R4, [R1, #16]
     STR R5, [R1, #20]
     STR R6, [R1, #24]
@@ -46,8 +49,15 @@ save_current:
     STR R11, [R1, #44]
     MRS R2, PSP
     STR R2, [R1, #68]
+
+    // check if stack is override
+    LDR R1, [R1, #88]
+    CMP R1, R2
+    BHI die_stack
 out_save_current:
     POP {R1, R2, PC}
+die_stack:
+    b die_stack
 
     .global switch_to
 switch_to:

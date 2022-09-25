@@ -117,6 +117,7 @@ void UsageFault_Handler(void)
 
 void SVC_Handler(void)
 {
+    check_psp();
     save_current();
     __asm__("bl at_syscall;");
     switch_to(current);

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <fs/fs.h>
 
+#define TASK_STACK_SIZE 2048
+#define TASK_STACK_MAGIC 0xcc
+#define TASK_STACK_MAGIC_LEN 12
+
 #define TASK_RUNNING         0
 #define TASK_INTERRUPTIBLE   1
 #define TASK_UNINTERRUPTIBLE 2
@@ -33,8 +37,9 @@ struct task_struct {
 
 void task_init(void);
 
-void reset_msp();
-void move_to_user_mode();
+void reset_msp(void);
+void check_psp(void);
+void move_to_user_mode(void);
 void schedule(void);
 
 extern struct list_head tasks;
