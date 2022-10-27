@@ -92,11 +92,8 @@ int on_close(int fd)
     LOG_DEBUG("tcp close: %d", fd_tcp);
     fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
     LOG_DEBUG("tcp open: %d", fd_tcp);
-    struct apix_events events = {
-        .on_close = on_close,
-        .on_pollin = on_pollin,
-    };
-    apix_set_events(ctx, fd_tcp, &events);
+    apix_on_fd_close(ctx, fd_tcp, on_close);
+    apix_on_fd_pollin(ctx, fd_tcp, on_pollin);
     return 0;
 }
 
@@ -128,11 +125,8 @@ static int apistt_init()
     apix_enable_stm32(ctx);
     fd_tcp = apix_open_stm32_tcp_server(ctx, "0.0.0.0:824");
     LOG_DEBUG("tcp open: %d", fd_tcp);
-    struct apix_events events = {
-        .on_close = on_close,
-        .on_pollin = on_pollin,
-    };
-    apix_set_events(ctx, fd_tcp, &events);
+    apix_on_fd_close(ctx, fd_tcp, on_close);
+    apix_on_fd_pollin(ctx, fd_tcp, on_pollin);
 
     return 0;
 }
