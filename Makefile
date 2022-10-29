@@ -47,15 +47,15 @@ $(wildcard src/drivers/*.c) \
 $(wildcard src/fs/*.c) \
 $(wildcard src/net/*.c) \
 $(wildcard src/libc/*.c) \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_rcc.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_utils.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_exti.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usart.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_spi.c \
-Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_tim.c
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_rcc.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_utils.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_exti.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usart.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_spi.c \
+STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_tim.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -127,9 +127,9 @@ C_INCLUDES =  \
 -Isrc \
 -Isrc/include \
 -Isrc/libc/include \
--IDrivers/STM32F1xx_HAL_Driver/Inc \
--IDrivers/CMSIS/Device/ST/STM32F1xx/Include \
--IDrivers/CMSIS/Include
+-ISTM32F1xx_HAL_Driver/Inc \
+-ISTM32F1xx/Include \
+-ICMSIS_5/CMSIS/Core/Include
 
 
 # compile gcc flags
