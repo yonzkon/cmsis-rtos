@@ -22,7 +22,7 @@ static int on_echo(struct srrp_packet *req, struct srrp_packet **resp)
 {
     uint16_t crc = crc16(req->header, req->header_len);
     crc = crc16_crc(crc, req->data, req->data_len);
-    *resp = srrp_write_response(req->srcid, crc, req->header, "{msg:'world'}");
+    *resp = srrp_new_response(req->srcid, crc, req->header, "{msg:'world'}");
     return 0;
 }
 
@@ -40,7 +40,7 @@ void __apistt_loop()
         uint32_t offset = srrp_next_packet_offset(
             atbuf_read_pos(rxbuf), atbuf_used(rxbuf));
         atbuf_read_advance(rxbuf, offset);
-        struct srrp_packet *req = srrp_read_one_packet(atbuf_read_pos(rxbuf));
+        struct srrp_packet *req = srrp_parse(atbuf_read_pos(rxbuf));
         if (req == NULL) {
             __send(fd_tcp, (uint8_t *)atbuf_read_pos(rxbuf), nread);
             atbuf_read_advance(rxbuf, atbuf_used(rxbuf));
@@ -72,7 +72,7 @@ void __apistt_loop()
     close(fd);
 
     if (time(0) % 600 == 0) {
-        struct srrp_packet *pac = srrp_write_request(
+        struct srrp_packet *pac = srrp_new_request(
             8888, "/8888/alive", "{}");
         __send(fd_tcp, (uint8_t *)pac->raw, pac->len);
         srrp_free(pac);
