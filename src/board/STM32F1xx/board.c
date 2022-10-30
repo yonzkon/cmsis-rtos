@@ -1,8 +1,5 @@
-#include "stm32f1xx_ll_bus.h"
-#include "stm32f1xx_ll_rcc.h"
-#include "stm32f1xx_ll_system.h"
-#include "stm32f1xx_ll_gpio.h"
-#include "stm32f1xx_ll_utils.h"
+#include <stm32f1xx.h>
+#include <assert.h>
 #include <stdint.h>
 #include <sched.h>
 #include <printk.h>
@@ -25,70 +22,72 @@ extern void switch_to(struct task_struct *task);
 
 uint64_t sys_tick_ms;
 
-/*
- * board init
- */
-
 void SystemClock_Config(void)
 {
-    LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
-    while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_0)
-    {
-    }
-    LL_RCC_HSI_SetCalibTrimming(16);
-    LL_RCC_HSI_Enable();
+    // init flash
+    FLASH->ACR &= ~FLASH_ACR_LATENCY;
+    FLASH->ACR |= FLASH_ACR_LATENCY_0;
+    while ((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_0);
 
-    /* Wait till HSI is ready */
-    while(LL_RCC_HSI_IsReady() != 1)
-    {
-    }
-    LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSI_DIV_2, LL_RCC_PLL_MUL_4);
-    LL_RCC_PLL_Enable();
+    // use HSE as clock source
+    RCC->CR |= RCC_CR_HSEON;
+    while ((RCC->CR & RCC_CR_HSERDY) != RCC_CR_HSERDY);
 
-    /* Wait till PLL is ready */
-    while(LL_RCC_PLL_IsReady() != 1)
-    {
-    }
-    LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
-    LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
-    LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
-    LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
+    // config HSE / 2 * 6 as PLL source
+    RCC->CFGR |= RCC_CFGR_PLLSRC;
+    RCC->CFGR |= RCC_CFGR_PLLXTPRE;
+    RCC->CFGR &= ~RCC_CFGR_PLLMULL;
+    RCC->CFGR |= RCC_CFGR_PLLMULL6;
 
-    /* Wait till System clock is ready */
-    while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
-    {
-    }
-    LL_Init1msTick(16000000);
+    // enable PLL
+    RCC->CR |= RCC_CR_PLLON;
+    while ((RCC->CR & RCC_CR_PLLRDY) != RCC_CR_PLLRDY);
+
+    // config system clock prescaler
+    RCC->CFGR &= ~RCC_CFGR_HPRE;
+    RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
+    RCC->CFGR &= ~RCC_CFGR_PPRE1;
+    RCC->CFGR |= RCC_CFGR_PPRE1_DIV1;
+    RCC->CFGR &= ~RCC_CFGR_PPRE2;
+    RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
+
+    // switch system clock source
+    RCC->CFGR &= ~RCC_CFGR_SW;
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+    // now we can disable HSI
+    RCC->CR &= ~RCC_CR_HSION;
+    while ((RCC->CR & RCC_CR_HSIRDY) == RCC_CR_HSIRDY);
+
+    // the system clock config to HSE / 2 * 6
+    uint32_t HCLK = HSE_VALUE / 2 * 6;
+    SysTick->LOAD = (uint32_t)((HCLK / 1000) - 1UL);
+    SysTick->VAL = 0UL;
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
     SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-    LL_SetSystemCoreClock(16000000);
+
+    // this function provided by ST will calc SystemCoreClock by itself,
+    // and it's a good way to testify our config
+    SystemCoreClockUpdate();
+    assert(SystemCoreClock == HCLK);
 }
 
 void board_init(void)
 {
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    // enable AFIO & PWR clock
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN_Msk;
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN_Msk;
 
-    /* System interrupt init*/
+    // config NVIC
     NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-
-    /* SysTick_IRQn interrupt configuration */
     NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
     NVIC_SetPriority(SVCall_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),14, 0));
     NVIC_SetPriority(PendSV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
-    /*
-     * DISABLE: JTAG-DP Disabled and SW-DP Disabled
-     */
-    //LL_GPIO_AF_DisableRemap_SWJ();
-
-    /* Configure the system clock */
+    // config system clock
     SystemClock_Config();
 }
-
-/*
- * Processor Exceptions Handlers
- */
 
 void NMI_Handler(void)
 {
