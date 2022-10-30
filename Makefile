@@ -34,7 +34,8 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-$(wildcard src/board/STM32F1xx/Source/Templates/system_stm32f1xx.c) \
+$(wildcard src/board/STM32F1xx/system_stm32f1xx.c) \
+$(wildcard src/board/STM32F1xx/board.c) \
 $(wildcard src/init/*.c) \
 $(wildcard src/syscall/*.c) \
 $(wildcard src/fs/*.c) \
@@ -58,7 +59,7 @@ stm32f1xx_hal_driver/Src/stm32f1xx_ll_tim.c
 
 # ASM sources
 ASM_SOURCES =  \
-src/board/STM32F1xx/Source/Templates/gcc/startup_stm32f103xb.s \
+src/board/STM32F1xx/startup_stm32f103xb.s \
 $(wildcard src/init/*.s) \
 $(wildcard src/syscall/*.s)
 
