@@ -15,7 +15,6 @@
 ######################################
 TARGET = cmsis-rtos
 
-
 ######################################
 # building variables
 ######################################
@@ -23,7 +22,6 @@ TARGET = cmsis-rtos
 DEBUG = 1
 # optimization
 OPT = -Og
-
 
 #######################################
 # paths
@@ -36,17 +34,18 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
+$(wildcard src/board/STM32F1xx/Source/Templates/system_stm32f1xx.c) \
+$(wildcard src/init/*.c) \
+$(wildcard src/syscall/*.c) \
+$(wildcard src/fs/*.c) \
+$(wildcard src/net/*.c) \
+$(wildcard src/drivers/*.c) \
+$(wildcard src/libc/*.c) \
+$(wildcard apix/src/*.c) \
 libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
 libmodbus/src/modbus-stm32-tcp.c \
-$(wildcard apix/src/*.c) \
-$(wildcard src/init/*.c) \
-$(wildcard src/syscall/*.c) \
-$(wildcard src/drivers/*.c) \
-$(wildcard src/fs/*.c) \
-$(wildcard src/net/*.c) \
-$(wildcard src/libc/*.c) \
 STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
 STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
 STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
@@ -59,10 +58,9 @@ STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_tim.c
 
 # ASM sources
 ASM_SOURCES =  \
-$(wildcard src/syscall/*.s) \
+src/board/STM32F1xx/Source/Templates/gcc/startup_stm32f103xb.s \
 $(wildcard src/init/*.s) \
-startup_stm32f103xb.s
-
+$(wildcard src/syscall/*.s)
 
 #######################################
 # binaries
@@ -95,7 +93,6 @@ CPU = -mcpu=cortex-m3
 
 # float-abi
 
-
 # mcu
 MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
 
@@ -116,21 +113,19 @@ C_DEFS =  \
 -DVDD_VALUE=3300 \
 -DPREFETCH_ENABLE=1
 
-
 # AS includes
 AS_INCLUDES =
 
 # C includes
 C_INCLUDES =  \
--Ilibmodbus/src \
--Iapix/src \
+-ICMSIS_5/CMSIS/Core/Include \
+-Isrc/board/STM32F1xx/Include \
 -Isrc \
 -Isrc/include \
 -Isrc/libc/include \
--ISTM32F1xx_HAL_Driver/Inc \
--ISTM32F1xx/Include \
--ICMSIS_5/CMSIS/Core/Include
-
+-Iapix/src \
+-Ilibmodbus/src \
+-ISTM32F1xx_HAL_Driver/Inc
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
@@ -141,16 +136,14 @@ ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
 endif
 
-
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
-
 
 #######################################
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F103C8Tx_FLASH.ld
+LDSCRIPT = src/board/STM32F1xx/STM32F103C8Tx_FLASH.ld
 
 # libraries
 LIBS = -lc -lm -lnosys
@@ -159,7 +152,6 @@ LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BU
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
-
 
 #######################################
 # build the application
