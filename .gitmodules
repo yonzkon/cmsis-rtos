@@ -7,3 +7,6 @@
 [submodule "libmodbus"]
 	path = libmodbus
 	url = https://github.com/yonzkon/libmodbus
+[submodule "stm32f1xx_hal_driver"]
+	path = stm32f1xx_hal_driver
+	url = https://github.com/STMicroelectronics/stm32f1xx_hal_driver

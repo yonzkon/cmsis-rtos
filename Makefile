@@ -46,15 +46,15 @@ libmodbus/src/modbus.c \
 libmodbus/src/modbus-data.c \
 libmodbus/src/modbus-stm32-rtu.c \
 libmodbus/src/modbus-stm32-tcp.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_i2c.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_gpio.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_dma.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_rcc.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_utils.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_exti.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usart.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_spi.c \
-STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_tim.c
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_i2c.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_gpio.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_dma.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_rcc.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_utils.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_exti.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_usart.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_spi.c \
+stm32f1xx_hal_driver/Src/stm32f1xx_ll_tim.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -125,7 +125,7 @@ C_INCLUDES =  \
 -Isrc/libc/include \
 -Iapix/src \
 -Ilibmodbus/src \
--ISTM32F1xx_HAL_Driver/Inc
+-Istm32f1xx_hal_driver/Inc
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
